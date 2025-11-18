@@ -1,0 +1,42 @@
+--- a/bittorrent/torrent.go
++++ b/bittorrent/torrent.go
+@@ -500,10 +500,10 @@ func (t *Torrent) Buffer(f *TorrentFile, isEndPiece bool) {
+ 			t.th.SetPieceDeadline(curPiece, 0, 0)
+ 		}
+ 		if startBufferPriority > 0 && curPiece < piece-1 && curPiece >= f.PieceStart {
+-			t.th.PiecePriority(curPiece, 3)
++			t.SetPiecePriority(curPiece, 3)
+ 		}
+ 		if endBufferPriority > 0 && curPiece > piece+1 && curPiece <= f.PieceEnd {
+-			t.th.PiecePriority(curPiece, 3)
++			t.SetPiecePriority(curPiece, 3)
+ 		}
+ 	}
+
+@@ -1043,7 +1043,7 @@ func (t *Torrent) setFilePriority(f *TorrentFile, priority int) {
+ 	if f == nil || t.th == nil || t.th.Swigcptr() == 0 {
+ 		return
+ 	}
+-	t.th.FilePriority(f.Index, priority)
++	t.SetFilePriority(f.Index, priority)
+ 	// Need to sleep because file_priority is executed async
+ 	// and doesn't update filePriorities immediately
+ 	time.Sleep(10 * time.Millisecond)
+@@ -1078,7 +1078,7 @@ func (t *Torrent) AddDeadlineFile(addFile *TorrentFile) (filePriority int) {
+ 	}
+
+ 	// Reset the file priority to skip
+-	t.th.FilePriority(addFile.Index, 0)
++	t.SetFilePriority(addFile.Index, 0)
+ 	// Need to sleep because file_priority is executed async
+ 	// and doesn't update filePriorities immediately
+ 	time.Sleep(10 * time.Millisecond)
+@@ -2201,7 +2201,7 @@ func (t *Torrent) PrioritizePieces() {
+ 		for i := downloader.offset; i < downloader.offset+config.Get().BTBufferSize/int(t.pieceLength)+10 && i <= f.PieceEnd; i++ {
+ 			if i < 0 || i >= numPieces {
+ 				continue
+-			} else if pr := t.th.PiecePriority(i).(int); pr == 0 {
++			} else if pr := t.GetPiecePriority(i); pr == 0 {
+ 				continue
+ 			} else if !t.hasPiece(i) && pr > 1 {
+ 				nonCompletePriorityPieces++
