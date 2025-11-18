@@ -60,3 +60,7 @@ plugin.video.elementum-*.zip
 
 # React app
 node_modules
+
+# Build artifacts - cloned repositories
+build_lookbehind/elementum/
+build_lookbehind/libtorrent-go/
