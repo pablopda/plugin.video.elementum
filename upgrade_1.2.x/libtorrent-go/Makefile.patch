@@ -1,0 +1,16 @@
+--- a/Makefile
++++ b/Makefile
+@@ -1,11 +1,11 @@
+ # libtorrent-go Makefile for 1.2.x upgrade
+
+ BOOST_VERSION = 1.78.0
+ BOOST_VERSION_FILE = $(shell echo $(BOOST_VERSION) | sed s/\\./_/g)
+ OPENSSL_VERSION = 1.1.1w
+ SWIG_VERSION = v4.1.1
+ GOLANG_VERSION = 1.21.1
+ GOLANG_BOOTSTRAP_VERSION = 1.19.11
+-LIBTORRENT_VERSION = 760f94862ef6b76a13bba0a68d55ca6507aef7c2 # RC_1_1
++LIBTORRENT_VERSION = v1.2.20  # RC_1_2 - Latest stable 1.2.x release
+
+ # Supported platforms
+ PLATFORMS = android-arm android-arm64 android-x64 android-x86 \
