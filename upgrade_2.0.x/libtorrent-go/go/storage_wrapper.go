@@ -9,6 +9,8 @@ package libtorrent
 
 import (
 	"sync"
+
+	lt "github.com/ElementumOrg/libtorrent-go"
 )
 
 // StorageIndex represents libtorrent::storage_index_t
@@ -69,8 +71,13 @@ func SetLookbehindPieces(storageIndex StorageIndex, pieces []int) {
 	if storageIndex == InvalidStorageIndex {
 		return
 	}
-	// Calls memory_disk_set_lookbehind from disk_interface.i
-	// MemoryDiskSetLookbehind(int(storageIndex), pieces)
+	// Convert Go slice to SWIG vector and call memory_disk_set_lookbehind
+	pieceVector := lt.NewStdVectorInt()
+	defer lt.DeleteStdVectorInt(pieceVector)
+	for _, p := range pieces {
+		pieceVector.Add(p)
+	}
+	lt.MemoryDiskSetLookbehind(int(storageIndex), pieceVector)
 }
 
 // ClearLookbehind clears all protected pieces for a torrent
@@ -78,8 +85,8 @@ func ClearLookbehind(storageIndex StorageIndex) {
 	if storageIndex == InvalidStorageIndex {
 		return
 	}
-	// Calls memory_disk_clear_lookbehind from disk_interface.i
-	// MemoryDiskClearLookbehind(int(storageIndex))
+	// Call SWIG binding to clear lookbehind buffer
+	lt.MemoryDiskClearLookbehind(int(storageIndex))
 }
 
 // IsLookbehindAvailable checks if a piece is available in lookbehind buffer
@@ -87,9 +94,8 @@ func IsLookbehindAvailable(storageIndex StorageIndex, piece int) bool {
 	if storageIndex == InvalidStorageIndex {
 		return false
 	}
-	// Calls memory_disk_is_lookbehind_available from disk_interface.i
-	// return MemoryDiskIsLookbehindAvailable(int(storageIndex), piece)
-	return false
+	// Call SWIG binding to check if piece is in lookbehind buffer
+	return lt.MemoryDiskIsLookbehindAvailable(int(storageIndex), piece)
 }
 
 // LookbehindStats holds lookbehind buffer statistics
@@ -105,10 +111,15 @@ func GetLookbehindStats(storageIndex StorageIndex) LookbehindStats {
 		return LookbehindStats{}
 	}
 
-	var stats LookbehindStats
-	// Calls memory_disk_get_lookbehind_stats from disk_interface.i
-	// MemoryDiskGetLookbehindStats(int(storageIndex), &stats.Available, &stats.ProtectedCount, &stats.MemoryUsed)
-	return stats
+	// Call SWIG binding to get lookbehind statistics
+	swigStats := lt.MemoryDiskGetLookbehindStats(int(storageIndex))
+	defer lt.DeleteLookbehindStats(swigStats)
+
+	return LookbehindStats{
+		Available:      int(swigStats.GetAvailable()),
+		ProtectedCount: int(swigStats.GetProtectedCount()),
+		MemoryUsed:     swigStats.GetMemoryUsed(),
+	}
 }
 
 // TorrentStorage provides a torrent-specific interface to storage operations

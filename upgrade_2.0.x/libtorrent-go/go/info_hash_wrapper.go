@@ -9,6 +9,8 @@ package libtorrent
 
 import (
 	"unsafe"
+
+	lt "github.com/ElementumOrg/libtorrent-go"
 )
 
 // InfoHashT wraps libtorrent::info_hash_t for dual v1/v2 hash support
@@ -18,7 +20,11 @@ type InfoHashT struct {
 
 // V1Hex returns the v1 (SHA-1) hash as a hex string
 func (ih *InfoHashT) V1Hex() string {
-	// Calls info_hash_t::v1_hex() from SWIG interface
+	// Call SWIG binding to get v1 hash as hex string
+	if ih.ptr != nil {
+		swigPtr := (lt.Info_hash_t)(ih.ptr)
+		return lt.Info_hash_t_v1_hex(swigPtr)
+	}
 	return ""
 }
 
@@ -30,13 +36,21 @@ func (ih *InfoHashT) BestHex() string {
 
 // HasV1 returns true if v1 hash is available
 func (ih *InfoHashT) HasV1() bool {
-	// Calls info_hash_t::has_v1() from SWIG interface
+	// Call SWIG binding to check if v1 hash is available
+	if ih.ptr != nil {
+		swigPtr := (lt.Info_hash_t)(ih.ptr)
+		return lt.Info_hash_t_has_v1(swigPtr)
+	}
 	return false
 }
 
 // HasV2 returns true if v2 hash is available
 func (ih *InfoHashT) HasV2() bool {
-	// Calls info_hash_t::has_v2() from SWIG interface
+	// Call SWIG binding to check if v2 hash is available
+	if ih.ptr != nil {
+		swigPtr := (lt.Info_hash_t)(ih.ptr)
+		return lt.Info_hash_t_has_v2(swigPtr)
+	}
 	return false
 }
 

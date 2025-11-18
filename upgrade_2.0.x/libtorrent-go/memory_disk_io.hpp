@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <iostream>
 #include <mutex>
+#include <atomic>
 #include <chrono>
 #include <vector>
 #include <string>
@@ -46,7 +47,8 @@ typedef boost::dynamic_bitset<> Bitset;
 namespace libtorrent {
 
 // Global memory configuration
-std::int64_t memory_disk_memory_size = 0;
+// Using atomic for thread-safe access from multiple threads
+std::atomic<std::int64_t> memory_disk_memory_size{0};
 
 // Get current time
 inline std::chrono::steady_clock::time_point now() {
@@ -85,7 +87,7 @@ struct memory_storage
         : m_files(p.files)
         , m_piece_length(p.files.piece_length())
         , m_num_pieces(p.files.num_pieces())
-        , capacity(memory_disk_memory_size)
+        , capacity(memory_disk_memory_size.load())
         , buffer_limit(0)
         , buffer_used(0)
     {
@@ -347,7 +349,8 @@ private:
     aux::vector<std::unique_ptr<memory_storage>, storage_index_t> m_torrents;
     std::vector<storage_index_t> m_free_slots;
     mutable std::mutex m_mutex;
-    bool m_abort = false;
+    // Using atomic for thread-safe access to abort flag
+    std::atomic<bool> m_abort{false};
 
 public:
     explicit memory_disk_io(io_context& ioc)
@@ -402,13 +405,21 @@ public:
         disk_job_flags_t) override
     {
         storage_error error;
-        span<char const> data;
+        char* buf = nullptr;
+        int buf_size = 0;
 
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             if (storage < m_torrents.end_index() && m_torrents[storage])
             {
-                data = m_torrents[storage]->readv(r, error);
+                span<char const> data = m_torrents[storage]->readv(r, error);
+                if (!error.ec && data.size() > 0)
+                {
+                    // Allocate owned buffer and copy data
+                    buf_size = static_cast<int>(data.size());
+                    buf = new char[buf_size];
+                    std::memcpy(buf, data.data(), buf_size);
+                }
             }
             else
             {
@@ -416,11 +427,9 @@ public:
             }
         }
 
-        post(m_ioc, [handler, error, data, this]
+        post(m_ioc, [handler, error, buf, buf_size, this]
         {
-            handler(disk_buffer_holder(*this,
-                const_cast<char*>(data.data()),
-                static_cast<int>(data.size())), error);
+            handler(disk_buffer_holder(*this, buf, buf_size), error);
         });
     }
 
@@ -607,9 +616,10 @@ public:
     void settings_updated() override {}
 
     // buffer_allocator_interface
-    void free_disk_buffer(char*) override
+    void free_disk_buffer(char* buf) override
     {
-        // Buffers are owned by memory_storage, no separate free needed
+        // Free buffers allocated in async_read
+        delete[] buf;
     }
 
     // ========================================================================
@@ -662,6 +672,25 @@ public:
             protected_count = 0;
             memory = 0;
         }
+    }
+
+    // ========================================================================
+    // Storage index tracking
+    // ========================================================================
+
+    // Get current number of torrents (for storage index prediction)
+    int get_torrent_count() const {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return static_cast<int>(m_torrents.size()) - static_cast<int>(m_free_slots.size());
+    }
+
+    // Get next storage index that will be assigned
+    int get_next_storage_index() const {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (!m_free_slots.empty()) {
+            return static_cast<int>(m_free_slots.back());
+        }
+        return static_cast<int>(m_torrents.size());
     }
 };
 

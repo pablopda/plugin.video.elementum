@@ -13,25 +13,63 @@ upgrade_2.0.x/
 ├── MIGRATION_PLAN.md                    # Comprehensive migration plan (~700 lines)
 ├── OFFICIAL_API_CHANGES.md              # Official API changes reference
 ├── BUILD_CONFIG.md                      # Build configuration guide
+├── CURRENT_STATUS.md                    # Current implementation status
 ├── README.md                            # This file
+│
+├── Evaluation Reports (Historical)
+│   ├── CRITICAL_EVALUATION.md           # Initial critical evaluation (outdated)
+│   ├── EVALUATION_SUMMARY.md            # Executive summary (outdated)
+│   ├── EVALUATION_INDEX.md              # Index of all evaluations
+│   ├── EVALUATION_SUMMARY_QUICK.md      # Quick summary
+│   ├── API_ACCURACY_EVALUATION.md       # API accuracy analysis
+│   ├── API_EVALUATION_EXECUTIVE_SUMMARY.txt
+│   ├── DOCUMENTATION_EVALUATION_REPORT.md
+│   ├── SWIG_EVALUATION_REPORT.md        # SWIG interface evaluation
+│   ├── GO_WRAPPER_EVALUATION.md         # Go wrapper analysis
+│   ├── GO_WRAPPER_EVALUATION_INDEX.md
+│   ├── ALERT_SYSTEM_EVALUATION.md       # Alert system analysis
+│   ├── ALERT_ISSUES_SUMMARY.txt
+│   ├── MEMORY_MANAGEMENT_ANALYSIS.md    # Memory management analysis
+│   ├── MEMORY_ANALYSIS_INDEX.md
+│   ├── MEMORY_EXECUTIVE_SUMMARY.md
+│   ├── MEMORY_ISSUES_VISUAL.txt
+│   ├── THREAD_SAFETY_ANALYSIS.md        # Thread safety analysis
+│   ├── THREAD_SAFETY_CODE_SNIPPETS.md
+│   ├── THREAD_SAFETY_QUICK_REFERENCE.md
+│   ├── THREAD_SAFETY_README.md
+│   ├── TEST_COVERAGE_EVALUATION.md      # Test coverage analysis
+│   ├── TEST_COVERAGE_SUMMARY.md
+│   ├── TEST_EVALUATION_README.md
+│   ├── RECOMMENDED_TEST_CASES.md
+│   ├── CORRECTIONS_NEEDED.md            # Corrections tracking
+│   ├── QUICK_FIX_GUIDE.md               # Quick fixes guide
+│   ├── WRAPPER_ISSUES_SUMMARY.md
+│   ├── FUNCTION_STATUS_MATRIX.txt
+│   └── REPORT_LOCATIONS.txt
+│
 ├── libtorrent-go/
 │   ├── memory_disk_io.hpp               # Core disk_interface implementation (~680 lines)
+│   ├── libtorrent.i                     # Main SWIG entry point
 │   ├── interfaces/
 │   │   ├── session.i                    # Session with session_params
 │   │   ├── session_params.i             # session_params SWIG
 │   │   ├── info_hash.i                  # info_hash_t SWIG
-│   │   ├── disk_interface.i             # disk_interface wrappers
+│   │   ├── disk_interface.i             # disk_interface wrappers (with mutex)
 │   │   ├── add_torrent_params.i         # Updated for info_hashes
-│   │   └── torrent_handle.i             # Updated for 2.0.x API
+│   │   ├── torrent_handle.i             # Updated for 2.0.x API
+│   │   ├── alerts.i                     # Alert type definitions
+│   │   └── extensions.i                 # Extension wrappers
 │   └── go/
 │       ├── session_wrapper.go           # Session creation helpers
 │       ├── info_hash_wrapper.go         # Info hash v1/v2 helpers
 │       └── storage_wrapper.go           # Storage index management
+│
 ├── elementum/
 │   └── bittorrent/
 │       ├── service_2.0.x.go             # BTService updates
 │       ├── torrent_2.0.x.go             # Torrent wrapper updates
 │       └── lookbehind_2.0.x.go          # Lookbehind manager updates
+│
 └── tests/
     └── upgrade_test.go                  # Upgrade tests
 ```

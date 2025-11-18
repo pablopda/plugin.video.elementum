@@ -58,15 +58,8 @@ func NewLookbehindManager(torrent *Torrent, config *LookbehindConfig) *Lookbehin
 	}
 }
 
-// UpdatePosition updates the lookbehind buffer based on current playback position
-func (lm *LookbehindManager) UpdatePosition(currentPiece int) {
-	if !lm.isEnabled {
-		return
-	}
-
-	lm.mu.Lock()
-	defer lm.mu.Unlock()
-
+// updatePositionLocked is the internal version called with lock already held
+func (lm *LookbehindManager) updatePositionLocked(currentPiece int) {
 	if currentPiece == lm.currentPiece {
 		return
 	}
@@ -87,6 +80,18 @@ func (lm *LookbehindManager) UpdatePosition(currentPiece int) {
 
 	// Update storage via disk_interface (2.0.x)
 	lm.torrent.SetLookbehindPieces(lm.protectedPieces)
+}
+
+// UpdatePosition updates the lookbehind buffer based on current playback position
+func (lm *LookbehindManager) UpdatePosition(currentPiece int) {
+	if !lm.isEnabled {
+		return
+	}
+
+	lm.mu.Lock()
+	defer lm.mu.Unlock()
+
+	lm.updatePositionLocked(currentPiece)
 }
 
 // Clear clears the lookbehind buffer
@@ -149,7 +154,7 @@ func (lm *LookbehindManager) SetBufferSize(size int) {
 	lm.config.BufferSize = size
 	// Re-calculate protected pieces with new size
 	if len(lm.protectedPieces) > 0 {
-		lm.UpdatePosition(lm.currentPiece)
+		lm.updatePositionLocked(lm.currentPiece)
 	}
 }
 
