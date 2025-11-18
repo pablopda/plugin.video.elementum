@@ -157,6 +157,14 @@
         <setting id="auto_kodi_buffer_size" label="30502" type="bool" default="true" />
         <setting id="buffer_timeout" label="30088" type="slider" option="int" range="10,5,600" default="60" />
 
+        <!-- Lookbehind Buffer for Backward Seeking -->
+        <setting label="30720" type="lsep" />
+        <setting id="lookbehind_enabled" label="30721" type="bool" default="true" />
+        <setting id="lookbehind_time" label="30722" type="slider" option="int" range="0,15,120" default="30" enable="eq(-1,true)" />
+        <setting id="lookbehind_max_size" label="30723" type="slider" option="int" range="20,10,300" default="150" enable="eq(-2,true)" />
+        <setting id="auto_adjust_lookbehind" label="30724" type="bool" default="true" enable="eq(-3,true)" />
+        <setting type="text" label="30725" enable="false" />
+
         <setting label="30589" type="lsep" />
         <setting id="max_upload_rate" label="30004" type="number" default="" />
         <setting id="max_download_rate" label="30005" type="number" default="" />
