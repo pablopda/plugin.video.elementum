@@ -141,8 +141,9 @@ public:
     bool is_reading;
 
     // Constructor for libtorrent 1.2.x
-    memory_storage(storage_params const& params, file_pool& pool)
-        : storage_interface(params.files)
+    // Takes file_storage reference as per 1.2.x pattern
+    explicit memory_storage(file_storage const& fs, torrent_info const* info)
+        : storage_interface(fs)
     {
         piece_count = 0;
         piece_length = 0;
@@ -156,8 +157,8 @@ public:
         m_handle = nullptr;
         t = nullptr;
 
-        m_files = &params.files;
-        m_info = params.info;
+        m_files = &fs;
+        m_info = info;
 
         capacity = memory_size;
         piece_count = m_info->num_pieces();
@@ -689,9 +690,9 @@ public:
 };
 
 // Storage constructor function for 1.2.x
-storage_interface* memory_storage_constructor(storage_params const& params, file_pool& pool)
+storage_interface* memory_storage_constructor(storage_params const& params, file_pool&)
 {
-    return new memory_storage(params, pool);
+    return new memory_storage(params.files, params.info);
 }
 
 } // namespace libtorrent
