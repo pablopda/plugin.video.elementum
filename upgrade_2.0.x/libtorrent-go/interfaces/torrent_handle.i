@@ -26,6 +26,10 @@
 %template(stdVectorAnnounceEntry) std::vector<libtorrent::announce_entry>;
 %template(stdVectorTorrentHandle) std::vector<libtorrent::torrent_handle>;
 
+%feature("director") torrent_handle;
+%feature("director") torrent_info;
+%feature("director") torrent_status;
+
 // Equaler interface
 %rename(Equal) libtorrent::torrent_handle::operator==;
 %rename(NotEqual) libtorrent::torrent_handle::operator!=;
@@ -149,10 +153,6 @@
 
 // Deprecated in 2.0.x
 %ignore libtorrent::torrent_status::info_hash;
-
-%feature("director") torrent_handle;
-%feature("director") torrent_info;
-%feature("director") torrent_status;
 
 %include <libtorrent/entry.hpp>
 %include <libtorrent/torrent_info.hpp>

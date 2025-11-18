@@ -81,8 +81,11 @@ namespace libtorrent {
         return static_cast<int>(self->status.size());
     }
 
-    // Get status at index
+    // Get status at index with bounds checking
     libtorrent::torrent_status const& get_status(int index) const {
+        if (index < 0 || index >= static_cast<int>(self->status.size())) {
+            throw std::out_of_range("status index out of bounds");
+        }
         return self->status[index];
     }
 }
@@ -97,6 +100,14 @@ namespace libtorrent {
     // Get v1 hash string
     std::string get_info_hash_v1_string() const {
         return lt::aux::to_hex(self->info_hashes.v1);
+    }
+
+    // Get v2 hash string (empty if no v2 hash)
+    std::string get_info_hash_v2_string() const {
+        if (self->info_hashes.has_v2()) {
+            return libtorrent::aux::to_hex(self->info_hashes.get_best());
+        }
+        return "";
     }
 }
 
@@ -225,5 +236,9 @@ namespace libtorrent {
     const int ALERT_TRACKER_ERROR = tracker_error_alert::alert_type;
     const int ALERT_PEER_CONNECT = peer_connect_alert::alert_type;
     const int ALERT_PEER_DISCONNECTED = peer_disconnected_alert::alert_type;
+    const int ALERT_TRACKER_WARNING = tracker_warning_alert::alert_type;
+    const int ALERT_DHT_ERROR = dht_error_alert::alert_type;
+    const int ALERT_EXTERNAL_IP = external_ip_alert::alert_type;
+    const int ALERT_PERFORMANCE = performance_alert::alert_type;
 }
 %}

@@ -22,15 +22,17 @@ namespace libtorrent {
 
 %inline %{
 #include <mutex>
+#include <memory>
 
 namespace libtorrent {
-    // Thread-safe global pointer to memory_disk_io instance
+    // Thread-safe global shared_ptr to memory_disk_io instance
     // Protected by mutex for multi-threaded access
+    // Using shared_ptr ensures proper lifetime management and prevents dangling pointers
     std::mutex g_memory_disk_io_mutex;
-    memory_disk_io* g_memory_disk_io = nullptr;
+    std::shared_ptr<memory_disk_io> g_memory_disk_io;
 
     // Set the global memory_disk_io pointer (called during session creation)
-    void set_global_memory_disk_io(memory_disk_io* dio) {
+    void set_global_memory_disk_io(std::shared_ptr<memory_disk_io> dio) {
         std::lock_guard<std::mutex> lock(g_memory_disk_io_mutex);
         g_memory_disk_io = dio;
     }
@@ -38,7 +40,7 @@ namespace libtorrent {
     // Clear the global pointer (called during session destruction)
     void clear_global_memory_disk_io() {
         std::lock_guard<std::mutex> lock(g_memory_disk_io_mutex);
-        g_memory_disk_io = nullptr;
+        g_memory_disk_io.reset();
     }
 
     // Thread-safe lookbehind wrapper functions
@@ -113,8 +115,9 @@ namespace libtorrent {
     // Use this before add_torrent to predict the storage_index
     int get_next_storage_index() {
         std::lock_guard<std::mutex> lock(g_memory_disk_io_mutex);
-        // This would need memory_disk_io to expose torrent count
-        // For now, track in Go layer
+        if (g_memory_disk_io) {
+            return g_memory_disk_io->get_next_storage_index();
+        }
         return -1;
     }
 }

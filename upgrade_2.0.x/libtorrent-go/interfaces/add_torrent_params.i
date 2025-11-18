@@ -20,6 +20,17 @@
 %include <std_shared_ptr.i>
 %shared_ptr(libtorrent::torrent_info)
 
+%ignore libtorrent::add_torrent_params::ti;
+
+// Deprecated/removed in 2.0.x
+%ignore libtorrent::add_torrent_params::info_hash;   // Use info_hashes
+%ignore libtorrent::add_torrent_params::storage;     // Use session_params
+%ignore libtorrent::add_torrent_params::url;         // Use parse_magnet_uri
+%ignore libtorrent::add_torrent_params::uuid;        // RSS removed
+
+%include <libtorrent/add_torrent_params.hpp>
+%include <libtorrent/magnet_uri.hpp>
+
 %extend libtorrent::add_torrent_params {
     const libtorrent::torrent_info* get_torrent_info() {
         return self->ti.get();
@@ -60,17 +71,6 @@
         return self->info_hashes.has_v2();
     }
 }
-
-%ignore libtorrent::add_torrent_params::ti;
-
-// Deprecated/removed in 2.0.x
-%ignore libtorrent::add_torrent_params::info_hash;   // Use info_hashes
-%ignore libtorrent::add_torrent_params::storage;     // Use session_params
-%ignore libtorrent::add_torrent_params::url;         // Use parse_magnet_uri
-%ignore libtorrent::add_torrent_params::uuid;        // RSS removed
-
-%include <libtorrent/add_torrent_params.hpp>
-%include <libtorrent/magnet_uri.hpp>
 
 // Resume data functions (same as 1.2.x)
 namespace libtorrent {

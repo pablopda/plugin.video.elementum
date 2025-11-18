@@ -133,6 +133,10 @@ func (s *BTService) AddTorrent(uri string, savePath string) (*Torrent, error) {
 		params.SetTorrentInfo(ti)
 	}
 
+	// Get next storage index before adding torrent
+	// This predicts the storage_index_t that will be assigned
+	nextIdx := lt.Get_next_storage_index()
+
 	// Add torrent to session
 	// In 2.0.x, we need to track the storage_index_t returned
 	handle, err := s.Session.AddTorrent(params)
@@ -145,8 +149,9 @@ func (s *BTService) AddTorrent(uri string, savePath string) (*Torrent, error) {
 	infoHashV1 := infoHashes.V1Hex()
 
 	// Track storage index for lookbehind access
-	storageIdx := s.Session.GetStorageIndex(infoHashV1)
-	s.memoryDiskIO.RegisterTorrent(infoHashV1, lt.StorageIndex(storageIdx))
+	// Use the predicted index from before add_torrent
+	storageIdx := lt.StorageIndex(nextIdx)
+	s.memoryDiskIO.RegisterTorrent(infoHashV1, storageIdx)
 
 	// Create Torrent wrapper
 	torrent := &Torrent{

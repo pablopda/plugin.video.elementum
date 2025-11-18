@@ -24,6 +24,19 @@
 #include "memory_disk_io.hpp"
 %}
 
+%include "extensions.i"
+%include <libtorrent/io_context.hpp>
+%include <libtorrent/ip_filter.hpp>
+%include <libtorrent/kademlia/dht_storage.hpp>
+%include <libtorrent/bandwidth_limit.hpp>
+%include <libtorrent/peer_class.hpp>
+%include <libtorrent/peer_class_type_filter.hpp>
+%include <libtorrent/settings_pack.hpp>
+%include <libtorrent/session_params.hpp>
+%include <libtorrent/session.hpp>
+%include <libtorrent/session_stats.hpp>
+%include <libtorrent/session_handle.hpp>
+
 %feature("director") session_handle;
 
 // Ignore problematic methods
@@ -63,6 +76,16 @@
         self->pop_alerts(&alerts);
         return alerts;
     }
+
+    // Copy alert message for safe storage (alert pointers become invalid after next session operation)
+    std::string get_alert_message(libtorrent::alert* a) const {
+        return a->message();
+    }
+
+    // Get alert type safely
+    int get_alert_type(libtorrent::alert* a) const {
+        return a->type();
+    }
 }
 // Note: Do NOT use %ignore for pop_alerts - we want the extended version
 
@@ -70,13 +93,14 @@
 %extend libtorrent::session_params {
     // Configure memory disk I/O
     void set_memory_disk_io(std::int64_t memory_size) {
-        libtorrent::memory_disk_memory_size = memory_size;
+        libtorrent::memory_disk_memory_size.store(memory_size);
         self->disk_io_constructor = [](libtorrent::io_context& ioc,
             libtorrent::settings_interface const& si, libtorrent::counters& cnt)
         {
-            auto dio = std::make_unique<libtorrent::memory_disk_io>(ioc);
-            // Use thread-safe setter for global pointer
-            libtorrent::set_global_memory_disk_io(dio.get());
+            // Use shared_ptr for proper lifetime management
+            auto dio = std::make_shared<libtorrent::memory_disk_io>(ioc);
+            // Store shared_ptr globally to prevent dangling pointer
+            libtorrent::set_global_memory_disk_io(dio);
             return dio;
         };
     }
@@ -101,19 +125,6 @@ namespace libtorrent {
     std::vector<char> write_session_params_buf(session_params const& sp,
         save_state_flags_t flags = save_state_flags_t::all());
 }
-
-%include "extensions.i"
-%include <libtorrent/io_context.hpp>
-%include <libtorrent/ip_filter.hpp>
-%include <libtorrent/kademlia/dht_storage.hpp>
-%include <libtorrent/bandwidth_limit.hpp>
-%include <libtorrent/peer_class.hpp>
-%include <libtorrent/peer_class_type_filter.hpp>
-%include <libtorrent/settings_pack.hpp>
-%include <libtorrent/session_params.hpp>
-%include <libtorrent/session.hpp>
-%include <libtorrent/session_stats.hpp>
-%include <libtorrent/session_handle.hpp>
 
 %extend libtorrent::settings_pack {
     void set_bool(std::string const& name, bool val) {

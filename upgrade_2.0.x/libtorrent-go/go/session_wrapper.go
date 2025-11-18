@@ -12,7 +12,10 @@ package libtorrent
 */
 import "C"
 import (
+	"fmt"
 	"unsafe"
+
+	lt "github.com/ElementumOrg/libtorrent-go"
 )
 
 // SessionParams wraps libtorrent::session_params for 2.0.x session creation
@@ -22,22 +25,32 @@ type SessionParams struct {
 
 // NewSessionParams creates a new session_params with default settings
 func NewSessionParams() *SessionParams {
-	// This would call the SWIG-generated constructor
+	// Call the SWIG-generated constructor for session_params
+	swigPtr := lt.NewSession_params()
 	return &SessionParams{
-		ptr: nil, // Will be set by SWIG binding
+		ptr: unsafe.Pointer(swigPtr),
 	}
 }
 
 // SetMemoryDiskIO configures memory-based disk I/O at session level
 // This replaces per-torrent storage configuration in 1.2.x
 func (sp *SessionParams) SetMemoryDiskIO(memorySize int64) {
-	// Calls session_params::set_memory_disk_io from SWIG interface
-	// This sets up the disk_io_constructor and memory limit
+	// Call SWIG binding to configure memory-based disk I/O
+	// This sets up the disk_io_constructor with memory limit
+	if sp.ptr != nil {
+		swigPtr := (lt.Session_params)(sp.ptr)
+		lt.MemoryDiskSetMemoryDiskIO(swigPtr, memorySize)
+	}
 }
 
 // SetSettings applies a settings_pack to the session params
 func (sp *SessionParams) SetSettings(settings *SettingsPack) {
-	// Calls session_params::set_settings from SWIG interface
+	// Call SWIG binding to set settings_pack on session_params
+	if sp.ptr != nil && settings != nil && settings.ptr != nil {
+		swigPtr := (lt.Session_params)(sp.ptr)
+		settingsSwigPtr := (lt.Settings_pack)(settings.ptr)
+		lt.Session_params_set_settings(swigPtr, settingsSwigPtr)
+	}
 }
 
 // GetSettings returns the current settings_pack
@@ -56,9 +69,16 @@ type Session struct {
 // CreateSessionWithParams creates a new session using session_params (2.0.x way)
 // This replaces NewSession(settings, flags) from 1.2.x
 func CreateSessionWithParams(params *SessionParams) (*Session, error) {
-	// Calls session::create_with_params from SWIG interface
+	// Call SWIG binding to create session with session_params
+	if params == nil || params.ptr == nil {
+		return nil, fmt.Errorf("invalid session params")
+	}
+
+	swigPtr := (lt.Session_params)(params.ptr)
+	sessionHandle := lt.NewSession(swigPtr)
+
 	return &Session{
-		handle:         nil, // Set by SWIG
+		handle:         unsafe.Pointer(sessionHandle),
 		storageIndices: make(map[string]int),
 	}, nil
 }

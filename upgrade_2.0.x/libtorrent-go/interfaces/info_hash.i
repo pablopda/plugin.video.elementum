@@ -19,12 +19,12 @@
 %extend libtorrent::info_hash_t {
     // Get v1 hash as hex string
     std::string v1_hex() const {
-        return lt::aux::to_hex(self->v1);
+        return libtorrent::aux::to_hex(self->v1);
     }
 
     // Get best available hash as hex string (prefers v2)
     std::string best_hex() const {
-        return lt::aux::to_hex(self->get_best());
+        return libtorrent::aux::to_hex(self->get_best());
     }
 
     // Check if has v1 hash
@@ -39,7 +39,7 @@
 
     // For backward compatibility - returns v1 hash string
     std::string to_string() const {
-        return lt::aux::to_hex(self->v1);
+        return libtorrent::aux::to_hex(self->v1);
     }
 }
 
@@ -52,7 +52,7 @@
 
     // Backward compatible - get v1 hash
     std::string get_info_hash_string() const {
-        return lt::aux::to_hex(self->info_hashes.v1);
+        return libtorrent::aux::to_hex(self->info_hashes.v1);
     }
 }
 
@@ -65,7 +65,7 @@
 
     // Backward compatible - get v1 hash string
     std::string info_hash_v1_string() const {
-        return lt::aux::to_hex(self->info_hashes().v1);
+        return libtorrent::aux::to_hex(self->info_hashes().v1);
     }
 }
 
@@ -73,7 +73,7 @@
 %extend libtorrent::add_torrent_params {
     // Set v1 info hash from hex string
     void set_info_hash_v1(std::string const& hex) {
-        lt::aux::from_hex(hex, self->info_hashes.v1.data());
+        libtorrent::aux::from_hex(hex, self->info_hashes.v1.data());
     }
 
     // Get info hashes

@@ -33,11 +33,3 @@
         return self->settings;
     }
 }
-
-// Update session to use session_params
-%extend libtorrent::session {
-    // Create session with params (2.0.x way)
-    static libtorrent::session* create_with_params(libtorrent::session_params params) {
-        return new libtorrent::session(std::move(params));
-    }
-}
