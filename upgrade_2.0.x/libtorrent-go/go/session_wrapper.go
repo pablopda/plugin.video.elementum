@@ -136,19 +136,43 @@ type SettingsPack struct {
 
 // NewSettingsPack creates a new settings_pack
 func NewSettingsPack() *SettingsPack {
-	return &SettingsPack{}
+	swigPtr := lt.NewSettings_pack()
+	return &SettingsPack{
+		ptr: unsafe.Pointer(swigPtr),
+	}
+}
+
+// Delete frees the underlying SWIG settings_pack
+func (sp *SettingsPack) Delete() {
+	if sp.ptr != nil {
+		lt.DeleteSettings_pack(lt.Settings_pack(sp.ptr))
+		sp.ptr = nil
+	}
+}
+
+// HasSetting checks if a setting exists by name
+func (sp *SettingsPack) HasSetting(name string) bool {
+	if sp.ptr == nil {
+		return false
+	}
+	swigSettings := lt.Settings_pack(sp.ptr)
+	return swigSettings.Has_setting(name)
 }
 
 // SetBool sets a boolean setting by name
 func (sp *SettingsPack) SetBool(name string, value bool) {
+	if sp.ptr == nil {
+		return
+	}
+
 	// Check for removed settings in 2.0.x
 	removedSettings := map[string]bool{
-		"lazy_bitfields":       true, // Removed in 1.2.x
-		"use_dht_as_fallback":  true, // Deprecated
-		"cache_size":           true, // Removed in 2.0.x (mmap handles caching)
-		"cache_expiry":         true, // Removed in 2.0.x
-		"use_read_cache":       true, // Removed in 2.0.x
-		"use_write_cache":      true, // Removed in 2.0.x
+		"lazy_bitfields":      true, // Removed in 1.2.x
+		"use_dht_as_fallback": true, // Deprecated
+		"cache_size":          true, // Removed in 2.0.x (mmap handles caching)
+		"cache_expiry":        true, // Removed in 2.0.x
+		"use_read_cache":      true, // Removed in 2.0.x
+		"use_write_cache":     true, // Removed in 2.0.x
 	}
 
 	if removedSettings[name] {
@@ -157,10 +181,30 @@ func (sp *SettingsPack) SetBool(name string, value bool) {
 	}
 
 	// Call SWIG binding
+	swigSettings := lt.Settings_pack(sp.ptr)
+	swigSettings.Set_bool(name, value)
 }
 
 // SetInt sets an integer setting by name
 func (sp *SettingsPack) SetInt(name string, value int) {
+	if sp.ptr == nil {
+		return
+	}
+
+	// Check for removed integer settings in 2.0.x
+	removedSettings := map[string]bool{
+		"cache_size":        true, // Removed in 2.0.x (mmap handles caching)
+		"cache_expiry":      true, // Removed in 2.0.x
+		"cache_buffer_chunk_size": true, // Removed in 2.0.x
+		"read_cache_line_size":    true, // Removed in 2.0.x
+		"write_cache_line_size":   true, // Removed in 2.0.x
+	}
+
+	if removedSettings[name] {
+		// Silently ignore removed settings for compatibility
+		return
+	}
+
 	// Handle renamed settings
 	renamedSettings := map[string]string{
 		// aio_threads was split in 2.0.x
@@ -172,26 +216,52 @@ func (sp *SettingsPack) SetInt(name string, value int) {
 	}
 
 	// Call SWIG binding
+	swigSettings := lt.Settings_pack(sp.ptr)
+	swigSettings.Set_int(name, value)
 }
 
 // SetStr sets a string setting by name
 func (sp *SettingsPack) SetStr(name string, value string) {
+	if sp.ptr == nil {
+		return
+	}
+
 	// Call SWIG binding
+	swigSettings := lt.Settings_pack(sp.ptr)
+	swigSettings.Set_str(name, value)
 }
 
 // GetBool gets a boolean setting by name
 func (sp *SettingsPack) GetBool(name string) bool {
-	return false
+	if sp.ptr == nil {
+		return false
+	}
+
+	// Call SWIG binding
+	swigSettings := lt.Settings_pack(sp.ptr)
+	return swigSettings.Get_bool(name)
 }
 
 // GetInt gets an integer setting by name
 func (sp *SettingsPack) GetInt(name string) int {
-	return 0
+	if sp.ptr == nil {
+		return 0
+	}
+
+	// Call SWIG binding
+	swigSettings := lt.Settings_pack(sp.ptr)
+	return swigSettings.Get_int(name)
 }
 
 // GetStr gets a string setting by name
 func (sp *SettingsPack) GetStr(name string) string {
-	return ""
+	if sp.ptr == nil {
+		return ""
+	}
+
+	// Call SWIG binding
+	swigSettings := lt.Settings_pack(sp.ptr)
+	return swigSettings.Get_str(name)
 }
 
 // ConfigureForStreaming sets optimal settings for video streaming
