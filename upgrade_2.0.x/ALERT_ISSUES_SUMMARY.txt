@@ -1,0 +1,313 @@
+================================================================================
+ALERT HANDLING SYSTEM - CRITICAL ISSUES SUMMARY
+================================================================================
+
+SCOPE: /home/user/plugin.video.elementum/upgrade_2.0.x/
+FILES: alerts.i, session.i, disk_interface.i, libtorrent.i
+
+================================================================================
+CRITICAL ISSUES (🔴 MUST FIX)
+================================================================================
+
+1. ALERT POINTER INVALIDATION - CRITICAL
+   Location: session.i:60-67 (pop_alerts method)
+   Problem: Alert pointers valid only until next session operation
+   Impact: Dangling pointers if alerts accessed later in event loop
+   Risk Level: CRITICAL (HIGH likelihood, CRITICAL impact)
+   
+   Pattern:
+   ```cpp
+   std::vector<libtorrent::alert*> pop_alerts() {
+       std::vector<libtorrent::alert*> alerts;
+       self->pop_alerts(&alerts);  // Points to session's internal storage
+       return alerts;              // Go receives stale pointers after next op
+   }
+   ```
+   
+   Fix: Extract essential data immediately, don't store alert pointers
+        Or implement alert object copying
+   
+   Affected Code: All alert processing in Go
+   
+   Test: Try accessing alert data outside pop_alerts loop
+
+---
+
+2. BOUNDS CHECKING MISSING - CRITICAL
+   Location: alerts.i:85 (state_update_alert::get_status)
+   Problem: No validation on index parameter
+   Impact: Out-of-bounds memory access if index >= status.size()
+   Risk Level: CRITICAL
+   
+   Code:
+   ```cpp
+   libtorrent::torrent_status const& get_status(int index) const {
+       return self->status[index];  // NO BOUNDS CHECK!
+   }
+   ```
+   
+   Fix: Add range validation:
+        if (index < 0 || static_cast<size_t>(index) >= self->status.size())
+            throw std::out_of_range("Index out of bounds");
+   
+   Affected Code: state_update_alert processing
+   
+   Test: Call get_status() with invalid index, verify exception
+
+---
+
+3. GLOBAL POINTER LIFETIME - CRITICAL
+   Location: disk_interface.i:30, 33-36
+   Problem: g_memory_disk_io becomes dangling when session destroyed
+   Impact: Use-after-free in lookbehind operations
+   Risk Level: CRITICAL (will crash in cleanup)
+   
+   Code:
+   ```cpp
+   memory_disk_io* g_memory_disk_io = nullptr;
+   
+   void set_global_memory_disk_io(memory_disk_io* dio) {
+       std::lock_guard<std::mutex> lock(g_memory_disk_io_mutex);
+       g_memory_disk_io = dio;  // Raw pointer from unique_ptr
+   }
+   // NO CLEANUP ON SESSION DESTRUCTION!
+   ```
+   
+   Scenario:
+   1. Session created, dio = unique_ptr(memory_disk_io)
+   2. set_global_memory_disk_io(dio.get()) stores raw pointer
+   3. Session destroyed, unique_ptr deletes object
+   4. Next lookbehind call tries to access dangling pointer -> CRASH
+   
+   Fix: Implement clear_global_memory_disk_io() in session destructor
+        OR use thread-local storage
+        OR store in wrapper class instead of global
+   
+   Affected Code: Lookbehind buffer operations, session cleanup
+   
+   Test: Create/destroy sessions, verify pointer cleanup
+
+================================================================================
+HIGH PRIORITY ISSUES (🟠 SHOULD FIX)
+================================================================================
+
+4. UNSAFE TYPE DOWNCASTING - HIGH
+   Location: alerts.i (overall design issue)
+   Problem: No type-safe mechanism for alert* -> specific_alert
+   Impact: Type confusion, memory corruption if wrong type accessed
+   Risk Level: HIGH
+   
+   Current Pattern:
+   ```go
+   // Go code must use unsafe cast:
+   alert := session.PopAlerts()[0]
+   alertType := alert.AlertType()
+   if alertType == libtorrent.AlertStateUpdate {
+       // Hope it's really a state_update_alert!
+       stateAlert := alert.(UnsafePointerCast)  // NO VERIFICATION
+   }
+   ```
+   
+   Problem:
+   - SWIG generates wrapper but no type-safe downcast
+   - If alertType lies, reading alert.status crashes
+   - No runtime type checking
+   
+   Fix: Implement C++ downcasting helpers with type verification:
+        ```cpp
+        const state_update_alert* as_state_update(alert* a) {
+            if (a->type() != state_update_alert::alert_type) return nullptr;
+            return static_cast<state_update_alert*>(a);
+        }
+        ```
+   
+   Affected Code: All alert type switching code
+   
+   Test: Try downcast with wrong alert type, verify it fails safely
+
+---
+
+5. MISSING ALERT TYPE CONSTANTS - HIGH
+   Location: alerts.i:213-229
+   Problem: 4 important alert types missing from constants
+   Missing:
+   - ALERT_TRACKER_WARNING
+   - ALERT_DHT_ERROR
+   - ALERT_EXTERNAL_IP
+   - ALERT_PERFORMANCE (2.0.x specific)
+   
+   Impact: Go code can't properly filter these alert types
+   Risk Level: HIGH (incomplete alert handling)
+   
+   Fix: Add constants:
+        const int ALERT_TRACKER_WARNING = tracker_warning_alert::alert_type;
+        const int ALERT_DHT_ERROR = dht_error_alert::alert_type;
+        const int ALERT_EXTERNAL_IP = external_ip_alert::alert_type;
+        const int ALERT_PERFORMANCE = performance_alert::alert_type;
+   
+   Affected Code: Alert filtering logic
+   
+   Test: Verify all expected alerts have constants
+
+---
+
+6. V2 HASH ACCESS MISSING - HIGH
+   Location: alerts.i (info_hash handling)
+   Problem: Only v1 hash accessible, no v2 hash getter
+   Impact: Hybrid torrents can't access v2 hash from alerts
+   Risk Level: HIGH (breaks hybrid torrent support)
+   
+   Missing:
+   ```cpp
+   std::string get_info_hash_v2_string() const {
+       return lt::aux::to_hex(self->info_hashes.v2);
+   }
+   ```
+   
+   Impact: Only v1 available:
+   ```go
+   v1 := alert.GetInfoHashV1String()  // Works
+   v2 := alert.GetInfoHashV2String()  // MISSING!
+   ```
+   
+   Fix: Add v2 getter methods to all affected alerts
+   
+   Affected Code: Hybrid torrent handling, info hash tracking
+   
+   Test: Verify v2 hash accessible for hybrid torrents
+
+---
+
+7. VECTOR ACCESS WITHOUT BOUNDS - HIGH
+   Location: alerts.i (multiple extensions)
+   Problem: Other vector accesses missing bounds checks
+   Examples:
+   - tracker_reply_alert::get_num_peers() (line 186)
+   - announce_entry (line 165-180)
+   - announce_endpoint (line 183-193)
+   - announce_infohash (line 195-210)
+   
+   Risk Level: HIGH
+   
+   Fix: Add validation to all array/vector accesses
+   
+   Test: Boundary testing on all array accesses
+
+================================================================================
+MEDIUM PRIORITY ISSUES (🟡 NICE TO HAVE)
+================================================================================
+
+8. THREAD SAFETY OF GO CALLBACKS - MEDIUM
+   Location: alerts.i (overall callback handling)
+   Problem: Alerts processed in session thread, callbacks invoke Go code
+   Impact: Potential race conditions, deadlocks in multithreaded scenarios
+   
+   Fix: Document threading model, add synchronization
+   Test: Run with race detector
+   
+---
+
+9. MISSING ERROR HANDLING - MEDIUM
+   Location: alerts.i (overall)
+   Problem: Error fields in alerts not exposed (error_code, etc.)
+   Impact: Can't properly handle alert errors
+   
+   Fix: Add getters for error_code fields
+   Test: Error alert processing
+
+================================================================================
+VERIFICATION CHECKLIST
+================================================================================
+
+ALERT WRAPPING (✅ MOSTLY DONE):
+  [x] Base alert methods (type, category, timestamp)
+  [x] Torrent alert extensions (info_hashes)
+  [x] state_update_alert (replaces stats_alert)
+  [x] Info hash fields on removed/deleted/failed alerts
+  [x] socket_type_t enum mapping
+  [x] Alert type constants (14 of 18 needed)
+
+TYPE CASTING SAFETY (⚠️ INCOMPLETE):
+  [ ] Type-safe downcasting helpers
+  [ ] Runtime type verification
+  [ ] Safe Go type assertions
+  [ ] Error handling for wrong type
+
+INFO_HASHES ACCESS (⚠️ PARTIAL):
+  [x] v1 hash field access
+  [ ] v2 hash field access (MISSING)
+  [x] Hex string conversion for v1
+  [ ] Hex string conversion for v2
+
+SOCKET_TYPE_T HANDLING (✅ COMPLETE):
+  [x] Enum definition
+  [x] All affected alerts wrapped
+  [x] Safe int casting
+  [x] Value mapping correct
+
+STATE_UPDATE_ALERT (⚠️ NEEDS FIXES):
+  [x] Replaces stats_alert
+  [x] Status vector access
+  [ ] Bounds checking on index access (MISSING)
+  [ ] Iterator or safe enumeration
+
+POP_ALERTS SAFETY (🔴 CRITICAL ISSUE):
+  [x] Method properly exposed
+  [x] Returns vector of pointers
+  [ ] Pointer lifetime documented
+  [ ] Safe usage pattern enforced
+  [ ] Dangling pointer prevention
+
+MEMORY MANAGEMENT (🔴 CRITICAL ISSUES):
+  [ ] Alert pointer lifetime management
+  [ ] Vector copy semantics clear
+  [ ] Cleanup on session destruction
+  [ ] Global pointer thread safety
+
+================================================================================
+DEPLOYMENT READINESS
+================================================================================
+
+Current Status: ⚠️ NOT PRODUCTION READY
+
+Blockers:
+  [CRITICAL] Alert pointer invalidation
+  [CRITICAL] Bounds checking missing
+  [CRITICAL] Global pointer cleanup
+  [HIGH] Type-safe downcasting
+  [HIGH] Missing alert types
+  [HIGH] V2 hash access
+
+Estimated Fix Time:
+  - Critical issues: 2-3 days
+  - High priority: 2-3 days
+  - Medium priority: 1-2 days
+  - Testing & validation: 3-5 days
+  - TOTAL: 8-13 days
+
+Recommendation: DO NOT DEPLOY until critical issues fixed
+
+================================================================================
+KEY FILES TO FIX
+================================================================================
+
+1. libtorrent-go/interfaces/alerts.i
+   - Add bounds checking to get_status()
+   - Add v2 hash getters
+   - Add missing alert type constants
+   - Add type-safe downcasting helpers
+
+2. libtorrent-go/interfaces/session.i
+   - Add pop_alerts lifetime documentation
+   - Consider alert pointer copying
+
+3. libtorrent-go/interfaces/disk_interface.i
+   - Add session cleanup for global pointer
+   - Implement clear_global_memory_disk_io()
+
+4. Go wrapper code (service_2.0.x.go, etc.)
+   - Use safe alert processing pattern
+   - Extract alert data immediately
+   - Don't store alert pointers
+
+================================================================================

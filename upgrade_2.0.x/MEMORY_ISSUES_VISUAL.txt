@@ -1,0 +1,177 @@
+================================================================================
+MEMORY MANAGEMENT CRITICAL ISSUES - VISUAL REFERENCE
+================================================================================
+
+ISSUE #1: SPAN POINTER ESCAPES LOCK (Most Critical)
+================================================================================
+
+    async_read()                              OTHER THREAD (io_context)
+    ─────────────────────────────────────────────────────────────────────
+    T0: Lock acquired
+    T1: span<char> data = readv() ───────┐   
+        (points to vector buffer)        │   
+    T2: Lock released                    │   
+        [vector could resize now!]       │
+    T3: post(lambda capture[data]) ──────┤───→ T10: Handler executes
+    T4: Lock released                    │      Tries to use data pointer
+    T5: (elsewhere) async_write()        │      DANGLING POINTER!
+    T6:   vector.resize() ───────────────┘      CRASH or DATA CORRUPTION
+        [reallocates, old ptr invalid]   
+
+FILES:
+  - memory_disk_io.hpp:400-425 (async_read)
+  - memory_disk_io.hpp:114-134 (readv returns span)
+
+
+ISSUE #2: free_disk_buffer IS EMPTY
+================================================================================
+
+    async_read()                        disk_buffer_holder destructor
+    ────────────────────────────────    ──────────────────────────────
+    Creates disk_buffer_holder(
+        *this,                          ~disk_buffer_holder() {
+        pointer,                            if (m_buf) {
+        size)                               m_allocator.free_disk_buffer(ptr);
+                                               ↓
+                                           memory_disk_io::free_disk_buffer(ptr)
+                                           {
+                                               // DOES NOTHING!
+                                           }
+                                       }
+    
+    PROBLEM: disk_buffer_holder expects to FREE memory
+             but memory is OWNED by memory_storage::m_file_data
+             NOT ALLOCATED by disk_buffer_holder
+
+FILE: memory_disk_io.hpp:610-613
+
+
+ISSUE #3: GLOBAL POINTER TO DESTROYED OBJECT
+================================================================================
+
+    Session 1                           Go Code
+    ─────────────────────────────────  ──────────────────────────────
+    session::session(params)
+      ↓ creates disk_io_constructor
+      ↓ calls memory_disk_constructor()
+      ↓ creates memory_disk_io object
+      ↓ stores pointer in g_memory_disk_io  
+      
+    ~session()
+      ↓ destroys disk_interface (unique_ptr)
+      ↓ memory_disk_io::~memory_disk_io()
+      ↓ object destroyed
+      ↓ g_memory_disk_io still points here! ←── DANGLING POINTER
+         
+    ─────────────────────────────────────────────────────────────────────
+    [Meanwhile in Go]
+                                       memory_disk_set_lookbehind() {
+                                           if (g_memory_disk_io) {  // NOT NULL!
+                                               g_memory_disk_io->... // USE AFTER FREE!
+                                           }
+                                       }
+
+FILES:
+  - disk_interface.i:33-36 (unsafe global pattern)
+  - session.i:74-81 (stores raw pointer)
+
+
+ISSUE #4: STORAGE INDEX REUSE WITH PENDING OPS
+================================================================================
+
+    Timeline
+    ────────────────────────────────────────────────────────
+    T0: Add Torrent 1 → storage_index = 0
+    T1: Async read pending for Torrent 1 (piece data at index 0)
+    T2: Remove Torrent 1 → index 0 added to free_slots
+    T3: Add Torrent 2 → reuses index 0
+    T4: Memory_storage for Torrent 2 created at index 0
+    T5: Async callback from Torrent 1 executes
+    T6: Accesses m_torrents[0] → it's Torrent 2 now!
+    T7: Data corruption - reads/writes wrong torrent data
+    
+FILES:
+  - memory_disk_io.hpp:366-384 (new_torrent reuses indices)
+
+
+ISSUE #5: VECTOR REALLOCATION INVALIDATES POINTERS
+================================================================================
+
+    memory_storage::m_file_data     After resize()
+    ────────────────────────────    ─────────────────
+    [ Piece 0 data ]
+    [ Piece 1 data ] ───→ async read has pointer to this data
+    [ Piece 2 data ]  
+                              Span contains: ptr = 0x1000, size = 16384
+                              
+    async_write() calls writev()
+    → data.resize(new_size)
+    → vector reallocates!
+    
+    [ Piece 0 data (new buffer) ]
+    [ Piece 1 data (new buffer) ]  ← OLD ptr = 0x1000 now INVALID
+    [ Piece 2 data (new buffer) ]
+                                      Async callback uses OLD ptr = 0x1000
+                                      → Accesses freed memory!
+
+FILES:
+  - memory_disk_io.hpp:137-158 (writev with resize)
+
+
+ISSUE #6: CONST_CAST HIDES OWNERSHIP VIOLATION
+================================================================================
+
+    span<char const> data;              async_read()
+    (const reference to vector data)    ────────────
+                                        disk_buffer_holder(*this,
+    const_cast<char*>(data.data())        const_cast<char*>(data.data()),
+                                            ↓
+                                        Removes const qualifier
+                                        But memory is NOT owned by disk_io!
+                                        
+    PROBLEM: const_cast is semantic lie
+             Says "I can modify this"
+             But memory owner (memory_storage) controls it
+             disk_buffer_holder destructor tries to free it
+             → Violates ownership contract
+
+FILE: memory_disk_io.hpp:422
+
+
+ISSUE #7: LAMBDA CAPTURES POINTERS ACROSS THREAD BOUNDARY
+================================================================================
+
+    post(m_ioc, [handler, error, data, this]
+    {
+        // Captured: handler (std::function<>)
+        //           error (storage_error value - OK)
+        //           data (span<char const> - POINTER!)
+        //           this (memory_disk_io* - raw pointer OK)
+        
+        handler(disk_buffer_holder(*this,
+            const_cast<char*>(data.data()),  // Using captured pointer
+            static_cast<int>(data.size())), error);
+    });
+    
+    PROBLEM: data.data() captured as raw pointer
+             Used in different thread context
+             No guarantee vector still valid
+             No synchronization
+             No copy of actual data
+
+FILE: memory_disk_io.hpp:419-424
+
+
+SUMMARY OF DANGERS
+================================================================================
+
+Likelihood of Crash/Corruption:  [████████████████████] 95%+
+Severity if It Happens:          CRITICAL (Data Loss, Crashes)
+Repro Difficulty:                MEDIUM (Race condition dependent)
+Coverage by Tests:               NONE (Memory management not tested)
+
+Current Status: NOT PRODUCTION READY
+
+Required: COMPLETE REWRITE of async_read/async_write to copy data, not reference
+
+================================================================================
