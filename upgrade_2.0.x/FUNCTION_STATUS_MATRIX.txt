@@ -1,0 +1,110 @@
+════════════════════════════════════════════════════════════════════════════════
+GO WRAPPER FUNCTION STATUS MATRIX
+════════════════════════════════════════════════════════════════════════════════
+
+FILE: session_wrapper.go
+────────────────────────────────────────────────────────────────────────────────
+Function                              | Status    | Issue
+────────────────────────────────────────────────────────────────────────────────
+NewSessionParams()                    | STUB      | Returns empty, ptr=nil
+SessionParams.SetMemoryDiskIO()       | STUB      | Empty body
+SessionParams.SetSettings()           | STUB      | Empty body
+SessionParams.GetSettings()           | STUB      | Returns nil
+CreateSessionWithParams()             | STUB      | Returns handle=nil
+Session.AddTorrent()                  | MISSING   | Not defined
+Session.RemoveTorrent()               | MISSING   | Not defined
+Session.GetStorageIndex()             | STUB      | Map access only
+Session.SaveSessionState()            | STUB      | Returns nil, error
+RestoreSessionState()                 | STUB      | Returns nil params
+Session.PostTorrentUpdates()          | STUB      | Empty body
+NewSession()                          | STUB      | Calls stubs
+SettingsPack.SetBool()                | STUB      | Empty body
+SettingsPack.SetInt()                 | STUB      | Empty body (with rename logic)
+SettingsPack.SetStr()                 | STUB      | Empty body
+SettingsPack.GetBool()                | STUB      | Returns false
+SettingsPack.GetInt()                 | STUB      | Returns 0
+SettingsPack.GetStr()                 | STUB      | Returns ""
+SettingsPack.ConfigureForStreaming()  | STUB      | Calls empty SetInt/SetBool
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: info_hash_wrapper.go
+────────────────────────────────────────────────────────────────────────────────
+Function                              | Status    | Issue
+────────────────────────────────────────────────────────────────────────────────
+InfoHashT.V1Hex()                     | STUB      | Returns ""
+InfoHashT.BestHex()                   | STUB      | Returns ""
+InfoHashT.HasV1()                     | STUB      | Returns false
+InfoHashT.HasV2()                     | STUB      | Returns false
+InfoHashT.ToString()                  | STUB      | Returns ""
+InfoHashT.IsHybrid()                  | SEMI-OK   | Calls HasV1/HasV2 (which are stubs)
+TorrentHandle.GetInfoHashes()         | STUB      | Returns nil
+TorrentHandle.InfoHashV1String()      | STUB      | Returns ""
+TorrentHandle.InfoHashBestString()    | STUB      | Returns ""
+TorrentHandle.HasV1()                 | STUB      | Returns false
+TorrentHandle.HasV2()                 | STUB      | Returns false
+TorrentStatus.GetInfoHashes()         | STUB      | Returns nil
+TorrentStatus.GetInfoHashString()     | STUB      | Returns ""
+TorrentStatus.GetActiveTimeSeconds()  | STUB      | Returns 0
+TorrentStatus.GetFinishedTimeSeconds()| STUB      | Returns 0
+TorrentStatus.GetSeedingTimeSeconds() | STUB      | Returns 0
+AddTorrentParams.SetInfoHashV1()      | STUB      | Empty body
+AddTorrentParams.SetInfoHashV2()      | STUB      | Empty body
+AddTorrentParams.GetInfoHashes()      | STUB      | Returns nil
+AddTorrentParams.GetInfoHashV1Hex()   | STUB      | Returns ""
+AddTorrentParams.HasV1()              | STUB      | Returns false
+AddTorrentParams.HasV2()              | STUB      | Returns false
+CompareInfoHashes()                   | STUB      | Calls nil-returning methods
+InfoHashKey()                         | STUB      | Calls nil-returning methods
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: storage_wrapper.go
+────────────────────────────────────────────────────────────────────────────────
+Function                              | Status    | Issue
+────────────────────────────────────────────────────────────────────────────────
+SetLookbehindPieces()                 | COMMENTED | Call commented out! (line 73)
+ClearLookbehind()                     | COMMENTED | Call commented out! (line 82)
+IsLookbehindAvailable()               | STUB      | Returns false
+GetLookbehindStats()                  | STUB      | Returns empty struct
+MemoryDiskIO.RegisterTorrent()        | OK        | Proper implementation
+MemoryDiskIO.UnregisterTorrent()      | OK        | Proper implementation
+MemoryDiskIO.GetStorageIndex()        | OK        | Map lookup works
+TorrentStorage.SetLookbehindPieces()  | BROKEN    | Calls commented function
+TorrentStorage.ClearLookbehind()      | BROKEN    | Calls commented function
+TorrentStorage.IsLookbehindAvailable()| BROKEN    | Calls stub
+TorrentStorage.GetStats()             | BROKEN    | Calls stub
+GetMemoryStorage()                    | SEMI-OK   | Works but uses stub methods
+────────────────────────────────────────────────────────────────────────────────
+
+MISSING CRITICAL FUNCTIONS (Not in wrappers at all)
+────────────────────────────────────────────────────────────────────────────────
+NewAddTorrentParams()                 | MISSING   | Called by tests, not in wrappers
+ParseMagnetUri(string)                | MISSING   | Called in service_2.0.x.go:121 ⚠
+NewTorrentInfo(path)                  | MISSING   | Called in service_2.0.x.go:129 ⚠
+DeleteSession(s)                      | MISSING   | Called in tests & cleanup code
+DeleteTorrent(handle)                 | MISSING   | May be needed
+TorrentHandle.Status()                | MISSING   | Called in torrent_2.0.x.go:55 ⚠
+TorrentHandle.Trackers()              | MISSING   | Called in torrent_2.0.x.go:154 ⚠
+TorrentHandle.Pause()                 | MISSING   | Called in torrent_2.0.x.go:197 ⚠
+TorrentHandle.Resume()                | MISSING   | May be called
+TorrentHandle.ForceRecheck()          | MISSING   | May be called
+TorrentHandle.ForceReannounce()       | MISSING   | May be called
+TorrentHandle.SaveResumeData()        | MISSING   | Called in torrent_2.0.x.go:190 ⚠
+TorrentHandle.SetSequentialDownload() | MISSING   | Called in torrent_2.0.x.go:218 ⚠
+TorrentHandle.ClearPieceDeadlines()   | PRESENT   | In torrent_2.0.x.go but not wrapper
+Session.PopAlerts()                   | MISSING   | Essential for alert handling
+AddTorrentParams.SavePath (property)  | MISSING   | Used in service_2.0.x.go:116 ⚠
+AddTorrentParams.SetTorrentInfo()     | MISSING   | Called in service_2.0.x.go:133 ⚠
+SettingsPack.HasSetting()             | MISSING   | Called in upgrade_test.go:62 ⚠
+────────────────────────────────────────────────────────────────────────────────
+
+Legend:
+  ✓  OK         - Proper implementation exists
+  ~  SEMI-OK    - Works but depends on stubs
+  ⚠  BROKEN     - Will fail at runtime
+  ❌ STUB       - Returns default/nil values, no actual work
+  🚫 COMMENTED  - Code is commented out!
+  ❗ MISSING    - Function not defined in wrapper
+
+⚠ = Actively called by service code - will crash
+🚫 = Critical for functionality - must uncomment and implement
+════════════════════════════════════════════════════════════════════════════════
