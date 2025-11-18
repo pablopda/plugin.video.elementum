@@ -1,0 +1,231 @@
+================================================================================
+ELEMENTUM SEEK/REWIND PERFORMANCE - QUICK REFERENCE GUIDE
+================================================================================
+
+INVESTIGATION SUMMARY:
+The slow rewind/seek issue is primarily a DAEMON-LEVEL PROBLEM (Go binary),
+not a Python plugin issue. The Python plugin is just a thin wrapper that:
+- Provides buffer size configuration
+- Passes seek commands to Kodi native player
+- Kodi then makes HTTP Range requests to the daemon
+- The daemon fetches torrent pieces to fulfill the Range requests
+
+================================================================================
+SEEK FLOW (Simple Version):
+================================================================================
+
+1. User presses rewind in Kodi player
+2. Kodi calls XBMC_PLAYER.seekTime() (native player)
+3. Kodi makes HTTP Range request to daemon: "Give me bytes 1000000-2000000"
+4. Daemon checks: "Do I have those pieces cached?"
+   - YES: Send cached data immediately (FAST)
+   - NO: Download from peers first (SLOW) ← THIS IS THE BOTTLENECK
+
+================================================================================
+IDENTIFIED BOTTLENECKS:
+================================================================================
+
+CRITICAL ISSUES:
+1. Buffer Size Too Small (Default: 20 MB)
+   - Rewind beyond 20 MB requires re-fetching from peers
+   - FIX: Increase buffer_size to 50-100 MB
+
+2. Backward Seek Piece Prioritization
+   - Libtorrent doesn't pre-fetch backward
+   - When you rewind, pieces need to be downloaded
+   - Depends on peer availability and network speed
+   - FIX: Daemon-level optimization needed
+
+3. Memory Cache Limitation (Default: 100 MB)
+   - Limited cache = limited lookback window
+   - FIX: Increase memory_size if system has RAM available
+
+MEDIUM ISSUES:
+4. Socket Timeout (120 seconds)
+   - If daemon takes > 120s to fetch pieces, connection times out
+   - FIX: Can be increased in settings (buffer_timeout: 60s default)
+
+5. Download Strategy Not Optimized for Seeking
+   - Different strategies (sequential, random, smart) perform differently
+   - FIX: Try different download_file_strategy settings
+
+6. Disk Cache Very Small (Default: 12 MB)
+   - If using file storage, cache is tiny
+   - FIX: Increase disk_cache_size to 24-32 MB
+
+================================================================================
+EXACT CODE LOCATIONS:
+================================================================================
+
+SEEK HANDLING:
+File: /home/user/plugin.video.elementum/resources/site-packages/elementum/rpc.py
+Lines: 286-292
+Method: Player_Seek(self, position)
+What it does: Just calls Kodi's native seekTime() - NO daemon communication
+
+PLAYBACK TRACKING:
+File: /home/user/plugin.video.elementum/resources/site-packages/elementum/rpc.py
+Lines: 268-284
+Method: Player_WatchTimes(self)
+What it does: Reports current position - read-only, doesn't affect seeking
+
+STREAMING SETUP:
+File: /home/user/plugin.video.elementum/resources/site-packages/elementum/navigation.py
+Lines: 305-388, especially 311-316
+What it does: Sets socket timeout, connects to daemon, gets streaming URL
+
+SOCKET TIMEOUT CALCULATION:
+File: /home/user/plugin.video.elementum/resources/site-packages/elementum/navigation.py
+Lines: 311-316
+Critical Code: buffer_timeout = buffer_timeout * 2
+What happens: 60s setting becomes 120s timeout
+
+================================================================================
+CONFIGURATION SETTINGS (In settings.xml):
+================================================================================
+
+BUFFER SETTINGS (Lines 154-158):
+- buffer_size: Default 20 MB → Increase to 50-100 MB for better rewind
+- end_buffer_size: Default 4 MB → Usually fine as-is
+- auto_kodi_buffer_size: Default true → Keep enabled
+- buffer_timeout: Default 60s → Increase to 120-240s if needed
+
+MEMORY/CACHE SETTINGS (Lines 22-35 & 200-201):
+- auto_memory_size: Default true → Keep enabled
+- memory_size: Default 100 MB → Increase to 200+ MB if available
+- auto_adjust_memory_size: Default true → Keep enabled
+- tuned_storage: Default true → Keep enabled
+- disk_cache_size: Default 12 MB → Increase to 24-32 MB for disk storage
+
+DOWNLOAD STRATEGY (Line 37):
+- download_file_strategy: Default 0 → Try different values (0, 1, 2)
+
+KEEP FILES SETTINGS (Lines 61-63):
+- keep_downloading: Should be "Keep downloading"
+- keep_files_playing: Should be "Keep files"
+- keep_files_finished: Should be "Keep files"
+
+================================================================================
+RECOMMENDED FIXES FOR USERS:
+================================================================================
+
+STEP 1 - TRY THESE SETTINGS FIRST:
+Go to Elementum Settings > BitTorrent:
+  1. buffer_size: Change from 20 → 75 (or 100 if you have RAM)
+  2. buffer_timeout: Change from 60 → 120 (or 180)
+  3. auto_kodi_buffer_size: Make sure it's ON
+
+Go to Settings > Storage:
+  4. auto_memory_size: Make sure it's ON
+  5. If auto_memory_size is OFF: memory_size: Set to 200+ MB
+
+STEP 2 - IF STILL SLOW, TRY THESE:
+Go to Settings > Storage:
+  6. download_file_strategy: Try changing from 0 to 1 or 2
+  7. disk_cache_size: Change from 12 → 32 (if using file storage)
+
+STEP 3 - SYSTEM LEVEL:
+  8. Check available RAM - Elementum needs memory for caching
+  9. Use wired network instead of WiFi if possible
+  10. Disable VPN if you have one enabled
+  11. Check torrent swarm health - need seeders with full file
+
+STEP 4 - IF STILL SLOW:
+  12. Issue is likely in the daemon (Go code)
+  13. Check if you're on latest version
+  14. May need to wait for daemon optimization
+  15. Or check Elementum GitHub issues
+
+================================================================================
+DAEMON ARCHITECTURE (The Real Bottleneck):
+================================================================================
+
+When you seek backward, this happens in the DAEMON (Go binary):
+
+1. Kodi requests bytes 1000000-2000000 via HTTP Range header
+2. Daemon calculates: "These are pieces X, Y, Z"
+3. Daemon checks its memory cache (100 MB default)
+4. If pieces in cache: SERVE IMMEDIATELY (fast)
+5. If pieces NOT in cache: 
+   a. Add pieces to download priority list
+   b. Request from available peers
+   c. Wait for pieces to arrive
+   d. Serve to Kodi when ready (SLOW)
+
+The slowness in step 5 depends on:
+- How many pieces need downloading
+- How many peers have those pieces (swarm health)
+- Peer upload speeds
+- Network latency
+- Daemon responsiveness
+
+Python plugin CANNOT fix steps 5b-5d. That's daemon-level.
+
+================================================================================
+WHAT THE PYTHON PLUGIN CAN CONTROL:
+================================================================================
+
+1. buffer_size - How many MB to pre-buffer ahead (20 MB default)
+2. memory_size - Total cache size (100 MB default)
+3. buffer_timeout - Socket timeout for requests (60s → 120s)
+4. download_file_strategy - Piece selection priority method
+5. disk_cache_size - Cache for file-based storage (12 MB default)
+
+What it CANNOT control:
+1. How Kodi makes HTTP Range requests
+2. How daemon fetches pieces from peers
+3. Libtorrent piece selection algorithms
+4. Peer availability and network speed
+5. Torrent swarm health
+
+================================================================================
+MONITORING/DEBUGGING:
+================================================================================
+
+To verify the issue is in piece fetching:
+
+1. Check Kodi log: ~/.kodi/logs/kodi.log
+   - Look for "timeout" or "connection refused" messages during seeks
+   
+2. Check daemon responsiveness:
+   - Try seeking forward (should be fast) vs backward (slow)
+   - Forward seeks use pre-buffered data (fast)
+   - Backward seeks need to fetch (slow)
+
+3. Network diagnostics:
+   - Test connection speed to peers
+   - Check if VPN is causing issues
+   - Verify torrent has many seeders
+
+4. Memory diagnostics:
+   - Monitor available RAM during playback
+   - If memory < 500 MB, increase buffer_size settings
+   - If memory > 2 GB, increase memory_size aggressively
+
+================================================================================
+FINAL CONCLUSION:
+================================================================================
+
+Root Cause: DAEMON-LEVEL ISSUE
+- The Go daemon's libtorrent integration doesn't optimize for backward seeks
+- Backward seeks require fetching pieces that weren't pre-buffered
+- This is slow on slow networks or with rare pieces
+
+Quick Fixes (Python Plugin Level):
+- Increase buffer_size (20 MB → 50-100 MB)
+- Increase memory_size (100 MB → 200+ MB)
+- Increase buffer_timeout (60s → 120-240s)
+
+Long-term Fix (Daemon Level):
+- Needs optimization in elementum daemon (Go code)
+- Needs smarter piece selection for seeking patterns
+- Needs backward pre-buffering capability
+- Check https://github.com/elgatito/elementum for updates
+
+Status: Development of Elementum plugin is STOPPED
+- No more feature updates expected
+- Bug fixes only for compatibility
+- Community forks exist with improvements
+- Consider alternative torrent streaming plugins
+
+================================================================================
