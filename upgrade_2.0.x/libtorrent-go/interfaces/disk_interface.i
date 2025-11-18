@@ -21,13 +21,29 @@ namespace libtorrent {
 // Since disk_interface is internal, we access through session
 
 %inline %{
+#include <mutex>
+
 namespace libtorrent {
-    // Global pointer to the memory_disk_io instance
-    // Set when session is created with memory disk I/O
+    // Thread-safe global pointer to memory_disk_io instance
+    // Protected by mutex for multi-threaded access
+    std::mutex g_memory_disk_io_mutex;
     memory_disk_io* g_memory_disk_io = nullptr;
 
-    // Lookbehind wrapper functions
+    // Set the global memory_disk_io pointer (called during session creation)
+    void set_global_memory_disk_io(memory_disk_io* dio) {
+        std::lock_guard<std::mutex> lock(g_memory_disk_io_mutex);
+        g_memory_disk_io = dio;
+    }
+
+    // Clear the global pointer (called during session destruction)
+    void clear_global_memory_disk_io() {
+        std::lock_guard<std::mutex> lock(g_memory_disk_io_mutex);
+        g_memory_disk_io = nullptr;
+    }
+
+    // Thread-safe lookbehind wrapper functions
     void memory_disk_set_lookbehind(int storage_index, std::vector<int> const& pieces) {
+        std::lock_guard<std::mutex> lock(g_memory_disk_io_mutex);
         if (g_memory_disk_io) {
             g_memory_disk_io->set_lookbehind_pieces(
                 storage_index_t(storage_index), pieces);
@@ -35,12 +51,14 @@ namespace libtorrent {
     }
 
     void memory_disk_clear_lookbehind(int storage_index) {
+        std::lock_guard<std::mutex> lock(g_memory_disk_io_mutex);
         if (g_memory_disk_io) {
             g_memory_disk_io->clear_lookbehind(storage_index_t(storage_index));
         }
     }
 
     bool memory_disk_is_lookbehind_available(int storage_index, int piece) {
+        std::lock_guard<std::mutex> lock(g_memory_disk_io_mutex);
         if (g_memory_disk_io) {
             return g_memory_disk_io->is_lookbehind_available(
                 storage_index_t(storage_index), piece);
@@ -50,6 +68,7 @@ namespace libtorrent {
 
     void memory_disk_get_lookbehind_stats(int storage_index,
         int& available, int& protected_count, std::int64_t& memory) {
+        std::lock_guard<std::mutex> lock(g_memory_disk_io_mutex);
         if (g_memory_disk_io) {
             g_memory_disk_io->get_lookbehind_stats(
                 storage_index_t(storage_index),
@@ -63,6 +82,40 @@ namespace libtorrent {
 }
 %}
 
-// Note: The storage_index_t for a torrent can be obtained from
-// the torrent_handle or tracked when adding torrents.
-// This requires additional integration work in Elementum.
+// ============================================================================
+// Storage Index Tracking
+// ============================================================================
+//
+// IMPORTANT: libtorrent 2.0.x does NOT expose storage_index_t from add_torrent.
+// The storage_index_t is managed internally by disk_interface.
+//
+// Workaround: Track storage indices in Go wrapper layer by:
+// 1. Counting new_torrent calls (order-based)
+// 2. Mapping info_hash_v1 -> storage_index after add_torrent
+// 3. Using BTService.storageIndices map
+//
+// See: elementum/bittorrent/service_2.0.x.go for implementation
+
+// Storage index helper functions
+%inline %{
+namespace libtorrent {
+    // Create storage_index_t from int
+    storage_index_t make_storage_index(int idx) {
+        return storage_index_t(idx);
+    }
+
+    // Get int value from storage_index_t
+    int storage_index_value(storage_index_t idx) {
+        return static_cast<int>(idx);
+    }
+
+    // Get next storage index (returns current count before add)
+    // Use this before add_torrent to predict the storage_index
+    int get_next_storage_index() {
+        std::lock_guard<std::mutex> lock(g_memory_disk_io_mutex);
+        // This would need memory_disk_io to expose torrent count
+        // For now, track in Go layer
+        return -1;
+    }
+}
+%}

@@ -64,7 +64,7 @@
         return alerts;
     }
 }
-%ignore libtorrent::session_handle::pop_alerts;
+// Note: Do NOT use %ignore for pop_alerts - we want the extended version
 
 // Session params extensions
 %extend libtorrent::session_params {
@@ -75,7 +75,8 @@
             libtorrent::settings_interface const& si, libtorrent::counters& cnt)
         {
             auto dio = std::make_unique<libtorrent::memory_disk_io>(ioc);
-            libtorrent::g_memory_disk_io = dio.get();
+            // Use thread-safe setter for global pointer
+            libtorrent::set_global_memory_disk_io(dio.get());
             return dio;
         };
     }
