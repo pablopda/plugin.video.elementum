@@ -1,0 +1,47 @@
+--- a/bittorrent/service.go
++++ b/bittorrent/service.go
+@@ -231,8 +231,8 @@ func (s *Service) initSession() {
+ 	settings.SetBool("announce_to_all_tiers", true)
+ 	settings.SetBool("announce_to_all_trackers", true)
+ 	settings.SetBool("apply_ip_filter_to_trackers", false)
+-	settings.SetBool("lazy_bitfields", true)
++	// REMOVED in 1.2.x: settings.SetBool("lazy_bitfields", true)
+ 	settings.SetBool("no_atime_storage", true)
+ 	settings.SetBool("no_connect_privileged_ports", true)
+ 	settings.SetBool("prioritize_partial_pieces", false)
+@@ -239,7 +239,7 @@ func (s *Service) initSession() {
+ 	settings.SetBool("smooth_connects", true)
+ 	settings.SetBool("strict_end_game_mode", true)
+ 	settings.SetBool("upnp_ignore_nonrouters", true)
+-	settings.SetBool("use_dht_as_fallback", false)
++	// DEPRECATED in 1.2.x: settings.SetBool("use_dht_as_fallback", false)
+ 	settings.SetBool("use_parole_mode", true)
+
+ 	// Connection settings
+@@ -797,14 +797,19 @@ func (s *Service) AddTorrent(options *TorrentOptions) (*Torrent, error) {
+ 		fastResumeData, err := os.ReadFile(fastResumeFile)
+ 		if err == nil && len(fastResumeData) > 0 {
+ 			log.Debugf("Loading fast resume data from %s", fastResumeFile)
+-			fastResumeVector := lt.NewStdVectorChar()
+-			defer lt.DeleteStdVectorChar(fastResumeVector)
+-			for _, c := range fastResumeData {
+-				fastResumeVector.Add(c)
++
++			// New 1.2.x resume data API
++			errorCode := lt.NewErrorCode()
++			resumeParams := lt.ReadResumeData(fastResumeData, errorCode)
++			if !errorCode.Failed() {
++				// Copy relevant fields from resumeParams to torrentParams
++				// The exact fields depend on what you want to preserve
++				torrentParams.SetFlags(resumeParams.GetFlags())
++				// ... copy other fields as needed
++			} else {
++				log.Warningf("Failed to parse resume data: %s", errorCode.Message())
+ 			}
+-			torrentParams.SetResumeData(fastResumeVector)
+-			// torrentParams.SetFlags(uint64(lt.AddTorrentParamsFlagMergeResumeTrackers))
+-			// lt.DeleteStdVectorChar(fastResumeVector)
++			lt.DeleteErrorCode(errorCode)
+ 		}
+ 	}
+
