@@ -86,6 +86,39 @@
     int get_alert_type(libtorrent::alert* a) const {
         return a->type();
     }
+
+    // Add torrent with proper error handling
+    // Returns torrent_handle - call get_last_error() if handle is invalid
+    libtorrent::torrent_handle add_torrent_safe(libtorrent::add_torrent_params const& p) {
+        libtorrent::error_code ec;
+        libtorrent::torrent_handle h = self->add_torrent(p, ec);
+        return h;
+    }
+
+    // Add torrent and return error message (empty string if success)
+    std::string add_torrent_with_error(libtorrent::add_torrent_params const& p, libtorrent::torrent_handle& out_handle) {
+        libtorrent::error_code ec;
+        out_handle = self->add_torrent(p, ec);
+        if (ec) {
+            return ec.message();
+        }
+        return "";
+    }
+
+    // Remove torrent with proper handling
+    void remove_torrent_ec(libtorrent::torrent_handle const& h, int options) {
+        self->remove_torrent(h, static_cast<libtorrent::remove_flags_t>(options));
+    }
+
+    // Find torrent by info_hash_t
+    libtorrent::torrent_handle find_torrent_by_info_hashes(libtorrent::info_hash_t const& ih) const {
+        return self->find_torrent(ih);
+    }
+
+    // Get all torrent handles
+    std::vector<libtorrent::torrent_handle> get_all_torrents() const {
+        return self->get_torrents();
+    }
 }
 // Note: Do NOT use %ignore for pop_alerts - we want the extended version
 
