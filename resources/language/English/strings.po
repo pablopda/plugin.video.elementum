@@ -2288,3 +2288,28 @@ msgstr ""
 msgctxt "#30715"
 msgid "Antizapret PAC file URL"
 msgstr ""
+
+# Lookbehind Buffer Settings
+msgctxt "#30720"
+msgid "Lookbehind Buffer"
+msgstr ""
+
+msgctxt "#30721"
+msgid "Enable lookbehind buffer"
+msgstr ""
+
+msgctxt "#30722"
+msgid "Lookbehind time (seconds)"
+msgstr ""
+
+msgctxt "#30723"
+msgid "Maximum lookbehind size (MB)"
+msgstr ""
+
+msgctxt "#30724"
+msgid "Auto-adjust lookbehind size"
+msgstr ""
+
+msgctxt "#30725"
+msgid "Keeps recently played content in memory for faster backward seeking"
+msgstr ""
