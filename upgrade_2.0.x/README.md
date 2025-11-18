@@ -10,16 +10,30 @@ This directory contains the implementation for upgrading from libtorrent 1.2.x t
 
 ```
 upgrade_2.0.x/
-├── MIGRATION_PLAN.md                    # Comprehensive migration plan
+├── MIGRATION_PLAN.md                    # Comprehensive migration plan (~700 lines)
+├── OFFICIAL_API_CHANGES.md              # Official API changes reference
+├── BUILD_CONFIG.md                      # Build configuration guide
 ├── README.md                            # This file
 ├── libtorrent-go/
-│   ├── memory_disk_io.hpp               # Core implementation (~600 lines)
-│   └── interfaces/
-│       ├── session_params.i             # session_params SWIG
-│       ├── info_hash.i                  # info_hash_t SWIG
-│       └── disk_interface.i             # disk_interface wrappers
-├── elementum/                           # (To be added)
-└── tests/                               # (To be added)
+│   ├── memory_disk_io.hpp               # Core disk_interface implementation (~680 lines)
+│   ├── interfaces/
+│   │   ├── session.i                    # Session with session_params
+│   │   ├── session_params.i             # session_params SWIG
+│   │   ├── info_hash.i                  # info_hash_t SWIG
+│   │   ├── disk_interface.i             # disk_interface wrappers
+│   │   ├── add_torrent_params.i         # Updated for info_hashes
+│   │   └── torrent_handle.i             # Updated for 2.0.x API
+│   └── go/
+│       ├── session_wrapper.go           # Session creation helpers
+│       ├── info_hash_wrapper.go         # Info hash v1/v2 helpers
+│       └── storage_wrapper.go           # Storage index management
+├── elementum/
+│   └── bittorrent/
+│       ├── service_2.0.x.go             # BTService updates
+│       ├── torrent_2.0.x.go             # Torrent wrapper updates
+│       └── lookbehind_2.0.x.go          # Lookbehind manager updates
+└── tests/
+    └── upgrade_test.go                  # Upgrade tests
 ```
 
 ## Architecture Change Summary
