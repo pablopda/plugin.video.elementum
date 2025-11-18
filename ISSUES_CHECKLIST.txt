@@ -1,0 +1,490 @@
+================================================================================
+MAINTAINABILITY ISSUES - DETAILED CHECKLIST
+plugin.video.elementum - Kodi Addon
+================================================================================
+
+CRITICAL PRIORITY - BARE EXCEPT CLAUSES (14 INSTANCES)
+================================================================================
+
+1. addon.py:15
+   Issue: Bare except - catches all exception types including KeyboardInterrupt
+   Code: except:
+   Fix: Specify exception types (AttributeError, TypeError, OSError, etc.)
+   Impact: CRITICAL - Silent failures during addon initialization
+
+2. osarch.py:18
+   Issue: Bare except in get_platform() function
+   Code: except:
+   Fix: Catch specific platform detection exceptions
+   Impact: HIGH - Platform detection fallback masked
+
+3. osarch.py:71
+   Issue: Bare except in get_platform_legacy() function
+   Code: except:
+   Fix: Specify exceptions
+   Impact: HIGH - Legacy platform detection fails silently
+
+4. osarch.py:105
+   Issue: Bare except in unknown context
+   Code: except:
+   Fix: Add specific exception types
+   Impact: MEDIUM
+
+5. osarch.py:110
+   Issue: Bare except
+   Code: except:
+   Fix: Add exception type
+   Impact: MEDIUM
+
+6. osarch.py:118
+   Issue: Bare except
+   Code: except:
+   Fix: Add exception type
+   Impact: MEDIUM
+
+7. osarch.py:123
+   Issue: Bare except
+   Code: except:
+   Fix: Add exception type
+   Impact: MEDIUM
+
+8. osarch.py:209
+   Issue: Bare except
+   Code: except:
+   Fix: Add exception type
+   Impact: MEDIUM
+
+9. osarch.py:231
+   Issue: Bare except
+   Code: except:
+   Fix: Add exception type
+   Impact: MEDIUM
+
+10. osarch.py:255
+    Issue: Bare except
+    Code: except:
+    Fix: Add exception type
+    Impact: MEDIUM
+
+11. dialog_select.py:23
+    Issue: Bare except in dialog initialization
+    Code: except:
+    Fix: Catch specific dialog exceptions
+    Impact: MEDIUM - Dialog failures hidden
+
+12. dialog_select.py:27
+    Issue: Bare except in dialog initialization
+    Code: except:
+    Fix: Catch specific exceptions
+    Impact: MEDIUM
+
+13. dialog_select.py:31
+    Issue: Bare except in dialog initialization
+    Code: except:
+    Fix: Catch specific exceptions
+    Impact: MEDIUM
+
+14. service.py:34
+    Issue: Bare except - catches all shutdown exceptions
+    Code: except: pass
+    Fix: except Exception as e: log.debug("Shutdown error: %s" % e)
+    Impact: CRITICAL - Hides shutdown errors
+
+
+CRITICAL PRIORITY - MISSING DOCSTRINGS
+================================================================================
+
+DAEMON.PY - 18 FUNCTIONS, 1 DOCSTRING (94% MISSING)
+
+1. daemon.py:52
+   Function: sanitize_args_for_logging(args)
+   Issue: No docstring
+   Fix: Add Args/Returns docstring for password masking behavior
+   Impact: CRITICAL - Security behavior unclear
+
+2. daemon.py:67
+   Function: ensure_exec_perms(file_)
+   Issue: No docstring
+   Fix: Document file permission modification
+   Impact: HIGH
+
+3. daemon.py:72
+   Function: android_get_current_appid()
+   Issue: No docstring
+   Fix: Document Android-specific behavior
+   Impact: HIGH
+
+4. daemon.py:76
+   Function: get_elementumd_checksum(path)
+   Issue: No docstring
+   Fix: Document return value (str or ""), when empty returned
+   Impact: HIGH
+
+5. daemon.py:94
+   Function: get_addon_profile_dir()
+   Issue: No docstring
+   Fix: Document return value (absolute path to addon profile)
+   Impact: HIGH
+
+6. daemon.py:100
+   Function: get_android_data_folders()
+   Issue: No docstring
+   Fix: Document Android folder path logic
+   Impact: MEDIUM
+
+7. daemon.py:108
+   Function: get_android_bin_folders()
+   Issue: No docstring
+   Fix: Document Android binary folder paths
+   Impact: MEDIUM
+
+8. daemon.py:116
+   Function: detect_available_folder(folders)
+   Issue: No docstring
+   Fix: Document algorithm for detecting available folders
+   Impact: HIGH
+
+9. daemon.py:122
+   Function: migrate_previous_folder(folders, dest_folder)
+   Issue: No docstring
+   Fix: Document migration logic
+   Impact: MEDIUM
+
+10. daemon.py:148
+    Function: get_elementum_binary() - 77 LINES
+    Issue: No docstring - MASSIVE undocumented function
+    Fix: Document platform-specific binary detection, return value Tuple[str, str]
+    Impact: CRITICAL - Core functionality undocumented
+
+11. daemon.py:295
+    Function: clear_fd_inherit_flags()
+    Issue: No docstring
+    Fix: Document Windows-specific file descriptor handling
+    Impact: HIGH - Complex platform code
+
+12. daemon.py:312
+    Function: jsonrpc_enabled(notify=False)
+    Issue: No docstring
+    Fix: Document JSON-RPC availability check, notify behavior
+    Impact: MEDIUM
+
+13. daemon.py:328
+    Function: start_elementumd(monitor, **kwargs) - 169 LINES
+    Issue: No docstring - CRITICAL FUNCTION
+    Fix: Document all parameters, return value, platform-specific logic
+    Impact: CRITICAL - Largest undocumented function
+
+14. daemon.py:497
+    Function: start_library(monitor, lib, log_path, args, library_path)
+    Issue: No docstring
+    Fix: Document library loading fallback mechanism
+    Impact: HIGH
+
+15. daemon.py:529
+    Function: shutdown()
+    Issue: No docstring
+    Fix: Document shutdown request to daemon
+    Impact: MEDIUM
+
+16. daemon.py:535
+    Function: wait_for_abortRequested(proc, monitor)
+    Issue: No docstring
+    Fix: Document graceful shutdown waiting
+    Impact: MEDIUM
+
+17. daemon.py:545
+    Function: elementumd_thread(monitor) - 130+ LINES
+    Issue: No docstring
+    Fix: Document daemon thread lifecycle, restart logic
+    Impact: CRITICAL
+
+18. daemon.py:676
+    Function: is_writable(path)
+    Issue: No docstring
+    Fix: Document path writeability check
+    Impact: MEDIUM
+
+
+NAVIGATION.PY - 14 FUNCTIONS, 0 DOCSTRINGS (100% MISSING)
+
+1. navigation.py:42 (InfoLabels class)
+   Issue: Class with no docstring
+   Fix: Document InfoLabels purpose and behavior
+   Impact: HIGH
+
+2. navigation.py:45
+   Function: __getitem__(self, key)
+   Issue: No docstring
+   Fix: Document case-insensitive behavior
+   Impact: MEDIUM
+
+3. navigation.py:48
+   Function: __setitem__(self, key, val)
+   Issue: No docstring
+   Fix: Document case-insensitive key storage
+   Impact: MEDIUM
+
+4. navigation.py:51
+   Function: update(self, *args, **kwargs)
+   Issue: No docstring
+   Fix: Document update behavior
+   Impact: MEDIUM
+
+5. navigation.py:57 (closing class)
+   Issue: Context manager with no docstring
+   Fix: Document resource cleanup behavior
+   Impact: MEDIUM
+
+6. navigation.py:67 (NoRedirectHandler class)
+   Issue: HTTP handler with no docstring
+   Fix: Document redirect handling behavior
+   Impact: MEDIUM
+
+7. navigation.py:82
+   Function: delistLabel(labels, key)
+   Issue: No docstring
+   Fix: Document label delisting logic
+   Impact: MEDIUM
+
+8. navigation.py:86
+   Function: normalizeLabels(labels)
+   Issue: No docstring
+   Fix: Document version-specific label normalization
+   Impact: HIGH
+
+9. navigation.py:104
+   Function: getInfoLabels() - 79 LINES
+   Issue: No docstring
+   Fix: Document info labels construction for Kodi versions
+   Impact: CRITICAL
+
+10. navigation.py:185
+    Function: remove_dbtype_from_list(list)
+    Issue: No docstring
+    Fix: Document list filtering behavior
+    Impact: MEDIUM
+
+11. navigation.py:193
+    Function: _json(url) - 114 LINES
+    Issue: No docstring
+    Fix: Document JSON request handling
+    Impact: HIGH
+
+12. navigation.py:307
+    Function: run(url_suffix="", retry=0) - 312+ LINES
+    Issue: No docstring - MAIN ENTRY POINT
+    Fix: Document navigation routing, URL parameters, retry logic
+    Impact: CRITICAL
+
+
+RPC.PY - 77 RPC METHODS, 0 DOCSTRINGS (100% MISSING)
+
+1. rpc.py:42 (ElementumRPCServer class)
+   Issue: RPC handler class with no docstring
+   Fix: Document RPC API overview
+   Impact: CRITICAL
+
+2. rpc.py:45
+   Function: __init__(self, *args, **kwargs)
+   Issue: No docstring
+   Fix: Document memory leak prevention mechanisms
+   Impact: MEDIUM
+
+3. rpc.py:53
+   Function: Reset(self)
+   Issue: No docstring
+   Fix: Document RPC object cleanup
+   Impact: MEDIUM
+
+4. rpc.py:68
+   Function: Ping(self)
+   Issue: No docstring
+   Fix: Document heartbeat behavior
+   Impact: LOW
+
+5. rpc.py:71
+   Function: Refresh(self)
+   Issue: No docstring
+   Fix: Document container refresh mechanism
+   Impact: MEDIUM
+
+6. rpc.py:74
+   Function: Update(self, url)
+   Issue: No docstring
+   Fix: Document URL update behavior
+   Impact: MEDIUM
+
+7. rpc.py:80
+   Function: InstallAddon(self, addonId)
+   Issue: No docstring
+   Fix: Document addon installation RPC method
+   Impact: HIGH
+
+[... 70+ MORE METHODS WITHOUT DOCSTRINGS ...]
+Total missing docstrings in rpc.py: ~75 methods
+
+
+OSARCH.PY - 5 FUNCTIONS, 0 DOCSTRINGS
+
+1. osarch.py:13
+   Function: get_platform()
+   Issue: No docstring - CRITICAL
+   Fix: Document return Dict structure, Kodi version parsing
+   Impact: CRITICAL - Core platform detection
+
+2. osarch.py:68
+   Function: get_platform_legacy()
+   Issue: No docstring
+   Fix: Document legacy fallback, deprecation timeline
+   Impact: HIGH
+
+
+HIGH PRIORITY - NO TYPE HINTS
+================================================================================
+
+1. daemon.py - ALL FUNCTIONS (0 type hints in 18 functions)
+   Impact: CRITICAL - Cannot use IDE autocompletion or type checking
+   Effort: 8-10 hours to add comprehensive type hints
+
+2. navigation.py - ALL FUNCTIONS (0 type hints in 14 functions)
+   Impact: CRITICAL
+   Effort: 6-8 hours
+
+3. rpc.py - ALL METHODS (0 type hints in 77 methods)
+   Impact: HIGH
+   Effort: 20-25 hours
+
+4. osarch.py - ALL FUNCTIONS (0 type hints)
+   Impact: HIGH
+   Effort: 2-3 hours
+
+5. provider.py - ALL FUNCTIONS
+   Impact: HIGH
+   Effort: 3-4 hours
+
+6. util.py - ALL FUNCTIONS
+   Impact: MEDIUM
+   Effort: 4-5 hours
+
+
+MEDIUM PRIORITY - WILDCARD IMPORTS (2 INSTANCES)
+================================================================================
+
+1. dialog_select.py:6
+   Code: from .dialog import *  # NOQA
+   Fix: Replace with explicit imports: from .dialog import DialogBase
+   Impact: MEDIUM - Namespace pollution, IDE cannot track
+
+2. dialog_insert.py:3
+   Code: from .dialog import *  # NOQA
+   Fix: Replace with explicit imports
+   Impact: MEDIUM
+
+
+MEDIUM PRIORITY - CODE COMPLEXITY ISSUES
+================================================================================
+
+1. daemon.py:328 - start_elementumd()
+   Length: 169 lines
+   Complexity: 9 distinct responsibilities
+   Fix: Break into smaller functions (_detect_binary, _build_args, etc.)
+   Effort: 4-6 hours
+   Impact: HIGH - Core functionality refactor
+
+2. daemon.py:545 - elementumd_thread()
+   Length: 130+ lines
+   Fix: Extract restart logic into separate method
+   Effort: 2-3 hours
+
+3. navigation.py:307 - run()
+   Length: 312+ lines
+   Fix: Break into navigation sub-handlers by media type
+   Effort: 6-8 hours
+
+4. rpc.py - ElementumRPCServer class
+   Methods: 77 methods in single class (GOD OBJECT)
+   Fix: Split into DialogRPCHandler, PlayerRPCHandler, etc.
+   Effort: 10-15 hours
+
+5. setup.cfg:2
+   Issue: Ignores C901 (complexity check)
+   Code: ignore = E302,E402,E722,E731,C901,W605,F632
+   Fix: Remove C901 from ignore list, enable complexity warnings
+   Impact: MEDIUM - Large functions never flagged
+
+
+LOW PRIORITY - ZERO TEST COVERAGE
+================================================================================
+
+1. No test files found
+   0 test functions / 208 total functions = 0% test coverage
+   Fix: Create tests/ directory with unit and integration tests
+   Estimated effort for basic coverage: 30-50 hours
+   Priority files to test:
+   - daemon.py (platform detection, startup)
+   - osarch.py (platform detection)
+   - provider.py (provider interface)
+   
+   Example test needed:
+   tests/test_daemon.py::test_platform_detection
+   tests/test_daemon.py::test_binary_startup
+   tests/test_osarch.py::test_platform_auto_detect
+
+
+MEDIUM PRIORITY - BUILD/DEPLOYMENT ISSUES
+================================================================================
+
+1. Makefile: No check/test targets
+   Fix: Add 'make lint' and 'make test' targets
+   Effort: 1-2 hours
+
+2. setup.cfg:2 - Overly permissive flake8 config
+   Issue: max-line-length = 370 (should be ~100)
+   Fix: Reduce to 120, remove E722 from ignores
+   Effort: 0.5 hours
+
+3. No pre-commit hooks
+   Fix: Create .pre-commit-config.yaml
+   Effort: 1-2 hours
+
+4. requirements.txt incomplete
+   Issue: Only lists 'flake8'
+   Fix: Add actual project dependencies with versions
+   Effort: 0.5 hours
+
+
+ADDITIONAL ISSUES
+================================================================================
+
+1. Global state in daemon.py
+   Variables: log_path, custom_path, last_exit_code, binary_platform, lib, last_lib
+   Issue: Module-level globals make testing impossible
+   Fix: Encapsulate in class or use dependency injection
+   Priority: MEDIUM
+
+2. Global HANDLE in navigation.py
+   Issue: sys.argv[1] captured at module load time
+   Fix: Pass through function parameters
+   Priority: MEDIUM
+
+3. __init__.py files missing module docstrings
+   Files: elementum/__init__.py (empty)
+   Fix: Add package-level documentation
+   Priority: MEDIUM
+
+
+SUMMARY STATISTICS
+================================================================================
+Total Python Functions/Methods:     208
+Functions with Docstrings:          30 (14.4%)
+Functions Missing Docstrings:       178 (85.6%)
+Files with Type Hints:              1 (6.25%)
+Bare Except Clauses:                14 (CRITICAL)
+Test Files:                         0 (0% coverage)
+Wildcard Imports:                   2
+Lines of Code (core modules):       3,526
+Average Function Length:            17 lines
+Largest Function:                   312+ lines (navigation.py:307)
+Estimated Refactoring Hours:        100+ hours
+
+================================================================================
