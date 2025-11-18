@@ -16,6 +16,40 @@
 #include <libtorrent/entry.hpp>
 #include <libtorrent/announce_entry.hpp>
 #include <libtorrent/info_hash.hpp>
+#include <libtorrent/error_code.hpp>
+%}
+
+// Factory function for creating torrent_info from file path
+// This is exposed as NewTorrentInfo in Go with error handling
+%inline %{
+namespace libtorrent {
+    // Create torrent_info from .torrent file path
+    // Returns nullptr on error, with error details in ec
+    torrent_info* new_torrent_info(std::string const& path, error_code& ec) {
+        try {
+            return new torrent_info(path, ec);
+        } catch (std::exception const& e) {
+            ec = errors::invalid_torrent_file;
+            return nullptr;
+        }
+    }
+
+    // Create torrent_info from in-memory buffer
+    // Useful for loading torrent data from network or storage
+    torrent_info* new_torrent_info_from_buffer(char const* data, int size, error_code& ec) {
+        try {
+            return new torrent_info(span<char const>(data, size), ec);
+        } catch (std::exception const& e) {
+            ec = errors::invalid_torrent_file;
+            return nullptr;
+        }
+    }
+
+    // Delete torrent_info object - for proper memory management from Go
+    void delete_torrent_info(torrent_info* ti) {
+        delete ti;
+    }
+}
 %}
 
 %include <std_vector.i>
@@ -160,6 +194,67 @@
 %include <libtorrent/torrent_status.hpp>
 %include <libtorrent/torrent.hpp>
 %include <libtorrent/announce_entry.hpp>
+
+// Torrent info extensions for common operations
+%extend libtorrent::torrent_info {
+    // Get info hash as hex string (v1)
+    std::string info_hash_hex() const {
+        return libtorrent::aux::to_hex(self->info_hashes().v1);
+    }
+
+    // Get best info hash as hex string
+    std::string best_info_hash_hex() const {
+        return libtorrent::aux::to_hex(self->info_hashes().get_best());
+    }
+
+    // Get v2 info hash as hex string (empty if not hybrid)
+    std::string info_hash_v2_hex() const {
+        if (self->info_hashes().has_v2()) {
+            return libtorrent::aux::to_hex(self->info_hashes().v2);
+        }
+        return "";
+    }
+
+    // Check if hybrid torrent (has both v1 and v2)
+    bool is_hybrid() const {
+        return self->info_hashes().has_v1() && self->info_hashes().has_v2();
+    }
+
+    // Get number of files
+    int num_files_int() const {
+        return self->num_files();
+    }
+
+    // Get total size
+    std::int64_t total_size_int() const {
+        return self->total_size();
+    }
+
+    // Get piece length
+    int piece_length_int() const {
+        return self->piece_length();
+    }
+
+    // Get number of pieces
+    int num_pieces_int() const {
+        return self->num_pieces();
+    }
+
+    // Get file path by index (with int for Go compatibility)
+    std::string file_path_at(int index) const {
+        return self->files().file_path(libtorrent::file_index_t(index));
+    }
+
+    // Get file size by index (with int for Go compatibility)
+    std::int64_t file_size_at(int index) const {
+        return self->files().file_size(libtorrent::file_index_t(index));
+    }
+
+    // Get file offset by index (with int for Go compatibility)
+    std::int64_t file_offset_at(int index) const {
+        return self->files().file_offset(libtorrent::file_index_t(index));
+    }
+}
 
 // Announce entry extensions for hybrid torrent support
 %extend libtorrent::announce_entry {
