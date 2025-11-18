@@ -158,7 +158,7 @@
 %include <libtorrent/torrent_info.hpp>
 %include <libtorrent/torrent_handle.hpp>
 %include <libtorrent/torrent_status.hpp>
-#include <libtorrent/torrent.hpp>
+%include <libtorrent/torrent.hpp>
 %include <libtorrent/announce_entry.hpp>
 
 // Announce entry extensions for hybrid torrent support
