@@ -10,11 +10,13 @@
 
 %{
 #include <memory>
+#include <stdexcept>
 #include <libtorrent/add_torrent_params.hpp>
 #include <libtorrent/magnet_uri.hpp>
 #include <libtorrent/read_resume_data.hpp>
 #include <libtorrent/write_resume_data.hpp>
 #include <libtorrent/info_hash.hpp>
+#include <libtorrent/error_code.hpp>
 %}
 
 %include <std_shared_ptr.i>
@@ -30,6 +32,32 @@
 
 %include <libtorrent/add_torrent_params.hpp>
 %include <libtorrent/magnet_uri.hpp>
+
+// Safe wrapper for parse_magnet_uri that handles error_code and throws on failure
+// This allows Go to receive proper error returns via SWIG exception handling
+%inline %{
+libtorrent::add_torrent_params parse_magnet_uri(std::string const& uri) {
+    libtorrent::error_code ec;
+    libtorrent::add_torrent_params params = libtorrent::parse_magnet_uri(uri, ec);
+    if (ec) {
+        throw std::runtime_error("Failed to parse magnet URI: " + ec.message());
+    }
+    return params;
+}
+
+// Alternative version that also returns the error message for inspection
+// Returns empty params with default-constructed info_hashes on error
+libtorrent::add_torrent_params parse_magnet_uri_with_error(std::string const& uri, std::string& error_out) {
+    libtorrent::error_code ec;
+    libtorrent::add_torrent_params params = libtorrent::parse_magnet_uri(uri, ec);
+    if (ec) {
+        error_out = ec.message();
+    } else {
+        error_out = "";
+    }
+    return params;
+}
+%}
 
 %extend libtorrent::add_torrent_params {
     const libtorrent::torrent_info* get_torrent_info() {
